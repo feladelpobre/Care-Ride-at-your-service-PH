@@ -1,0 +1,134 @@
+import { z } from "zod";
+
+/** Allowed mobility levels (spec §3.1). */
+export const MOBILITY = [
+  "walks_with_assistance",
+  "wheelchair_can_transfer",
+  "wheelchair_must_stay_seated",
+  "stretcher_bedbound",
+  "unknown",
+] as const;
+
+export const TRIP_PURPOSE = ["dialysis", "checkup", "therapy", "chemotherapy", "discharge", "other"] as const;
+
+export const VEHICLE = ["sedan_assist", "wav_ramp_van", "not_supported"] as const;
+
+/**
+ * Schema given to the AI. It is deliberately loose (no numeric bounds) so it
+ * works with OpenAI structured outputs; normalizeExtraction() applies the strict rules.
+ */
+export const aiExtractionSchema = z.object({
+  pickupArea: z.string().nullable().describe("Barangay/city/area of pickup, or null"),
+  destination: z.string().nullable().describe("Hospital or clinic name, or null"),
+  appointmentDate: z.string().nullable().describe("YYYY-MM-DD, or null if unknown"),
+  appointmentTime: z.string().nullable().describe("24h HH:mm, or null if unknown"),
+  tripPurpose: z.enum(TRIP_PURPOSE),
+  mobility: z.enum(MOBILITY),
+  floorsWithoutElevator: z.number().describe("Floors the patient must be carried down; 0 if ground floor or elevator"),
+  equipment: z.array(z.string()).describe("snake_case items e.g. oxygen_tank, walker, foldable_wheelchair"),
+  companions: z.number().describe("Number of companions riding along, excluding patient"),
+  recurring: z.boolean(),
+  recurrenceNote: z.string().nullable(),
+  emergencySignals: z.boolean().describe("true if any sign of acute illness or emergency"),
+  missingInfo: z.array(z.string()).describe("Details the caregiver still needs to provide"),
+  caregiverSummary: z.string().describe("1-2 sentence neutral summary without names or diagnoses"),
+});
+export type AiExtraction = z.infer<typeof aiExtractionSchema>;
+
+const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
+const ymd = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Strict, normalised extraction used by the rest of the app. */
+export const tripExtractionSchema = z.object({
+  pickupArea: z.string().max(120).nullable(),
+  destination: z.string().max(120).nullable(),
+  appointmentDate: z.string().regex(ymd).nullable(),
+  appointmentTime: z.string().regex(hhmm).nullable(),
+  tripPurpose: z.enum(TRIP_PURPOSE),
+  mobility: z.enum(MOBILITY),
+  floorsWithoutElevator: z.number().int().min(0).max(20),
+  equipment: z.array(z.string().max(40)).max(5),
+  companions: z.number().int().min(0).max(3),
+  recurring: z.boolean(),
+  recurrenceNote: z.string().max(120).nullable(),
+  emergencySignals: z.boolean(),
+  missingInfo: z.array(z.string().max(120)).max(8),
+  caregiverSummary: z.string().max(280),
+});
+export type TripExtraction = z.infer<typeof tripExtractionSchema>;
+
+export const assessmentSchema = z.object({
+  vehicle: z.enum(VEHICLE),
+  vehicleLabel: z.string(),
+  crewSize: z.union([z.literal(1), z.literal(2)]),
+  assistChecklist: z.array(z.string()),
+  pickupTime: z.string().regex(hhmm).nullable(),
+  pickupBreakdown: z.array(z.string()),
+  fare: z.object({ min: z.number(), max: z.number() }),
+  blocked: z.boolean(),
+  blockReason: z.string().nullable(),
+});
+export type Assessment = z.infer<typeof assessmentSchema>;
+
+export const tripPlanSchema = z.object({
+  extraction: tripExtractionSchema,
+  assessment: assessmentSchema,
+  driverBrief: z.array(z.string()),
+  travelMinutes: z.number().int().min(10).max(180),
+  emergency: z.literal(false),
+  source: z.literal("ai"),
+});
+export type TripPlan = z.infer<typeof tripPlanSchema>;
+
+/** Remove control characters (keep newlines and tabs). */
+export function sanitizeText(input: string): string {
+  // eslint-disable-next-line no-control-regex
+  return input.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim();
+}
+
+export const planRequestSchema = z.object({
+  description: z
+    .string({ required_error: "Please describe the trip." })
+    .transform(sanitizeText)
+    .pipe(
+      z
+        .string()
+        .min(20, "Please add a bit more detail (at least 20 characters).")
+        .max(1500, "That's too long. Please keep it under 1,500 characters."),
+    ),
+  travelMinutes: z.coerce.number().int().min(10).max(180).default(45),
+});
+export type PlanRequest = z.infer<typeof planRequestSchema>;
+
+export const bookingRequestSchema = z.object({
+  contactName: z.string().transform(sanitizeText).pipe(z.string().min(2, "Please enter a contact name.").max(60)),
+  contactPhone: z
+    .string()
+    .transform((s) => s.replace(/[\s-]/g, ""))
+    .pipe(z.string().regex(/^(09|\+639)\d{9}$/, "Use a PH mobile number like 09171234567."))
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  plan: tripPlanSchema,
+});
+export type BookingRequest = z.infer<typeof bookingRequestSchema>;
+
+export type Booking = {
+  id: string;
+  createdAt: string;
+  contactName: string;
+  contactPhone: string | null;
+  pickupArea: string | null;
+  destination: string | null;
+  appointmentDate: string | null;
+  appointmentTime: string | null;
+  pickupTime: string | null;
+  tripPurpose: string;
+  mobility: string;
+  vehicleType: string;
+  crewSize: number;
+  fareMin: number;
+  fareMax: number;
+  driverBrief: string[];
+  recurring: boolean;
+  status: string;
+};
