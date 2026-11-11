@@ -62,6 +62,14 @@ describe("feedback system (AC19)", () => {
     expect(feedbackRequestSchema.safeParse({ reference: "CR-4ED3B086", contactPhone: "09171234567", ratingOverall: 3, issueTypes: ["hacking"] }).success).toBe(false);
   });
 
+  it("treats the incident time as Philippine time (7:40 AM stays 7:40 AM)", async () => {
+    const { manilaLocalToIso } = await import("@/lib/feedback");
+    const { formatManilaDateTime } = await import("@/lib/format");
+    expect(manilaLocalToIso("2026-11-12T07:40")).toBe("2026-11-12T07:40:00+08:00");
+    expect(manilaLocalToIso("2026-11-12T07:40:00Z")).toBe("2026-11-12T07:40:00Z");
+    expect(formatManilaDateTime(new Date(manilaLocalToIso("2026-11-12T07:40")).toISOString())).toBe("Nov 12, 2026, 7:40 AM");
+  });
+
   it("helpers: ticket, reference range and average", () => {
     expect(feedbackTicket("ab12cd34-0000-0000-0000-000000000000")).toBe("FB-AB12CD34");
     expect(referenceToIdRange("CR-4ED3B086")).toEqual({ from: "4ed3b086-0000-0000-0000-000000000000", to: "4ed3b086-ffff-ffff-ffff-ffffffffffff" });

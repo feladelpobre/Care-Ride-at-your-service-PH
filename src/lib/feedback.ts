@@ -38,16 +38,23 @@ export const feedbackRequestSchema = z.object({
   ratingCaregiver: optionalRating,
   onTime: z.enum(["yes", "no", "unsure"]).optional().transform((v) => (v === "yes" ? true : v === "no" ? false : null)),
   issueTypes: z.array(z.enum(Object.keys(ISSUE_TYPES) as [IssueType, ...IssueType[]])).max(8).default([]),
+  /** From <input type="datetime-local"> (no timezone): treated as Philippine time (UTC+8). */
   incidentAt: z
     .string()
     .optional()
-    .transform((v) => (v ? v : null))
+    .transform((v) => (v ? manilaLocalToIso(v) : null))
     .refine((v) => v === null || !Number.isNaN(Date.parse(v)), "Enter a valid date and time."),
   driverName: optionalText(60),
   caregiverName: optionalText(60),
   details: optionalText(1000),
   wantsCallback: z.boolean().default(false),
 });
+/** "2026-11-12T07:40" (no offset) -> "2026-11-12T07:40+08:00"; strings that already carry Z/offset are kept. */
+export function manilaLocalToIso(v: string): string {
+  const t = v.trim();
+  return /([zZ]|[+-]\d{2}:?\d{2})$/.test(t) ? t : `${t.length === 16 ? `${t}:00` : t}+08:00`;
+}
+
 export type FeedbackRequest = z.infer<typeof feedbackRequestSchema>;
 
 /** Safety concerns are urgent; 1–2 star ratings or a callback request are high priority. */
