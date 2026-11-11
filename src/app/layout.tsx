@@ -37,11 +37,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Link href="/" className="hidden rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50 sm:inline-block">
                 Book a ride
               </Link>
-              <Link href="/feedback" className="rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50">
-                Feedback
-              </Link>
               <Link href="/dispatch" className="rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50">
                 Dispatcher
+              </Link>
+              <Link href="/feedback" className="rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50">
+                Feedback
               </Link>
             </div>
           </nav>
