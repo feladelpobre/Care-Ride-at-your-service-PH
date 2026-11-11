@@ -35,3 +35,12 @@ describe("booking request validation", () => {
     expect(bookingRequestSchema.shape.contactPhone.parse("")).toBeUndefined();
   });
 });
+
+import { upcomingCalendar } from "@/lib/prompt";
+describe("prompt calendar", () => {
+  it("lists correct Manila weekdays starting today", () => {
+    const cal = upcomingCalendar(new Date("2026-11-11T03:00:00Z")); // Wed 11:00 in Manila
+    expect(cal.startsWith("Wed 2026-11-11 (today), Thu 2026-11-12 (tomorrow/bukas)")).toBe(true);
+    expect(cal).toContain("Mon 2026-11-16");
+  });
+});
