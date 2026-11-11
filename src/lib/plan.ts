@@ -9,16 +9,26 @@ import { assess, buildDriverBrief, DEFAULT_COMPANION_HOURS } from "./rules";
  */
 export function buildPlan(
   extraction: TripExtraction,
-  overrides: { distanceKm?: number; companionHours?: number } = {},
+  overrides: {
+    distanceKm?: number;
+    companionHours?: number;
+    /** Tick boxes: "avail a wheelchair", "avail a hospital companion", "Senior/PWD" */
+    wheelchairRental?: boolean;
+    companion?: boolean;
+    seniorPwdDiscount?: boolean;
+  } = {},
 ): TripPlan {
   const route = estimateRoute(extraction.pickupArea, extraction.destination);
   const options: TripOptionsInput = {
     distanceKm: overrides.distanceKm ?? route.distanceKm,
     distanceSource: overrides.distanceKm !== undefined ? "caregiver" : route.source,
     companionHours:
-      overrides.companionHours ?? (extraction.wantsHospitalCompanion ? DEFAULT_COMPANION_HOURS[extraction.tripPurpose] : 0),
+      overrides.companionHours ??
+      (overrides.companion || extraction.wantsHospitalCompanion ? DEFAULT_COMPANION_HOURS[extraction.tripPurpose] : 0),
+    wheelchairRental: overrides.wheelchairRental ?? false,
+    seniorPwdDiscount: overrides.seniorPwdDiscount ?? false,
   };
-  const assessment = assess(extraction, { distanceKm: options.distanceKm, companionHours: options.companionHours });
+  const assessment = assess(extraction, options);
   return {
     extraction,
     assessment,

@@ -74,6 +74,7 @@ export const assessmentSchema = z.object({
     lines: z.array(z.object({ label: z.string(), amount: z.number() })),
     transportSubtotal: z.number(),
     companionSubtotal: z.number(),
+    discount: z.number(),
     total: z.number(),
     min: z.number(),
     max: z.number(),
@@ -88,6 +89,8 @@ export const tripOptionsSchema = z.object({
   distanceKm: z.coerce.number().min(0.5).max(150),
   distanceSource: z.enum(["estimated", "default", "caregiver"]),
   companionHours: z.coerce.number().int().min(0).max(12),
+  wheelchairRental: z.boolean().default(false),
+  seniorPwdDiscount: z.boolean().default(false),
 });
 export type TripOptionsInput = z.infer<typeof tripOptionsSchema>;
 
@@ -125,6 +128,14 @@ export const planRequestSchema = z.object({
     ),
   distanceKm: z.coerce.number().min(0.5).max(150).optional(),
   companionHours: z.coerce.number().int().min(0).max(12).optional(),
+  /** Tick boxes in step 1 */
+  addons: z
+    .object({
+      wheelchair: z.boolean().default(false),
+      companion: z.boolean().default(false),
+      seniorPwd: z.boolean().default(false),
+    })
+    .default({}),
 });
 export type PlanRequest = z.infer<typeof planRequestSchema>;
 
@@ -152,6 +163,8 @@ export type Booking = {
   pickupTime: string | null;
   distanceKm: number;
   companionHours: number;
+  wheelchairRental: boolean;
+  seniorPwdDiscount: boolean;
   tripPurpose: string;
   mobility: string;
   vehicleType: string;

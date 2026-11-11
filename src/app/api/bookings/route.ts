@@ -24,7 +24,12 @@ export async function POST(req: Request) {
 
   // Never trust client-sent assessment: recompute (AC8)
   const x = plan.extraction;
-  const fresh = buildPlan(x, { distanceKm: plan.options.distanceKm, companionHours: plan.options.companionHours });
+  const fresh = buildPlan(x, {
+    distanceKm: plan.options.distanceKm,
+    companionHours: plan.options.companionHours,
+    wheelchairRental: plan.options.wheelchairRental,
+    seniorPwdDiscount: plan.options.seniorPwdDiscount,
+  });
   const assessment = fresh.assessment;
   if (assessment.blocked) {
     return NextResponse.json({ error: assessment.blockReason }, { status: 422 });
@@ -41,6 +46,8 @@ export async function POST(req: Request) {
       pickupTime: assessment.pickupTime,
       distanceKm: fresh.options.distanceKm,
       companionHours: assessment.companionHours,
+      wheelchairRental: fresh.options.wheelchairRental,
+      seniorPwdDiscount: fresh.options.seniorPwdDiscount,
       tripPurpose: x.tripPurpose,
       mobility: x.mobility,
       vehicleType: assessment.vehicle,

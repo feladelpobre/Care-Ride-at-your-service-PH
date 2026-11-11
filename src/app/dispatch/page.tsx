@@ -56,6 +56,8 @@ export default async function DispatchPage() {
               </span>
               <span className="rounded-full bg-stone-100 px-3 py-1">Crew {b.crewSize}</span>
               {b.companionHours > 0 && <span className="rounded-full bg-violet-100 px-3 py-1 text-violet-900">Hospital companion {b.companionHours} h</span>}
+              {b.wheelchairRental && <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-900">Bring wheelchair</span>}
+              {b.seniorPwdDiscount && <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">Senior/PWD: check ID</span>}
               {b.recurring && <span className="rounded-full bg-stone-100 px-3 py-1">Recurring</span>}
               <span className="rounded-full bg-stone-100 px-3 py-1">
                 Est. {peso(b.fareMin)}–{peso(b.fareMax)}

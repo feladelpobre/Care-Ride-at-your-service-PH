@@ -70,6 +70,10 @@ export const OVER_40_PER_KM = { sedan_assist: 30, wav_ramp_van: 50 } as const;
 export const SECOND_CREW_FEE = 300;
 export const STAIR_FEE_PER_FLOOR = 100;
 export const COMPANION_RATE_PER_HOUR = 250;
+/** Wheelchair provided by the service for the trip (patient has none or it can't travel). */
+export const WHEELCHAIR_RENTAL_FEE = 150;
+/** RA 9994 (Senior Citizens) and RA 7277 as amended by RA 10754 (PWD): 20% off land transportation fares. */
+export const SENIOR_PWD_DISCOUNT_RATE = 0.2;
 export const COMPANION_MIN_HOURS = 2;
 
 /** Typical hours a hospital companion is needed, by trip purpose. */
@@ -108,9 +112,11 @@ export function priceQuote(args: {
   floorsWithoutElevator: number;
   distanceKm: number;
   companionHours: number;
+  wheelchairRental?: boolean;
+  seniorPwdDiscount?: boolean;
 }): Assessment["quote"] {
   if (args.vehicle === "not_supported") {
-    return { lines: [], transportSubtotal: 0, companionSubtotal: 0, total: 0, min: 0, max: 0 };
+    return { lines: [], transportSubtotal: 0, companionSubtotal: 0, discount: 0, total: 0, min: 0, max: 0 };
   }
   const v = args.vehicle;
   const dist = distanceSurcharge(v, args.distanceKm);
@@ -122,18 +128,26 @@ export function priceQuote(args: {
     lines.push({ label: "Second crew member", amount: SECOND_CREW_FEE });
     lines.push({ label: `Stair assist (${args.floorsWithoutElevator} floor/s)`, amount: STAIR_FEE_PER_FLOOR * args.floorsWithoutElevator });
   }
-  const transportSubtotal = lines.reduce((s, l) => s + l.amount, 0);
+  const fareSubtotal = lines.reduce((s, l) => s + l.amount, 0);
+  // Statutory 20% discount applies to the land transportation fare only (not to add-on services)
+  const discount = args.seniorPwdDiscount ? Math.round(fareSubtotal * SENIOR_PWD_DISCOUNT_RATE) : 0;
+  if (discount) lines.push({ label: "Senior Citizen / PWD fare discount (20%, RA 9994 / RA 10754)", amount: -discount });
+  const transportSubtotal = fareSubtotal - discount;
+  const wheelchair = args.wheelchairRental ? WHEELCHAIR_RENTAL_FEE : 0;
+  if (wheelchair) lines.push({ label: "Wheelchair provided for the trip", amount: wheelchair });
   const hrs = companionHoursBillable(args.companionHours);
   const companionSubtotal = hrs * COMPANION_RATE_PER_HOUR;
-  if (hrs) lines.push({ label: `Hospital companion (${hrs} h × ₱${COMPANION_RATE_PER_HOUR})`, amount: companionSubtotal });
-  const total = transportSubtotal + companionSubtotal;
+  if (hrs) lines.push({ label: `Hospital companion/caregiver (${hrs} h × ₱${COMPANION_RATE_PER_HOUR})`, amount: companionSubtotal });
+  const fixed = wheelchair + companionSubtotal;
+  const total = transportSubtotal + fixed;
   return {
     lines,
     transportSubtotal,
     companionSubtotal,
+    discount,
     total,
-    min: round10((transportSubtotal * 85) / 100) + companionSubtotal,
-    max: round10((transportSubtotal * 115) / 100) + companionSubtotal,
+    min: round10((transportSubtotal * 85) / 100) + fixed,
+    max: round10((transportSubtotal * 115) / 100) + fixed,
   };
 }
 
@@ -151,7 +165,12 @@ export function buildChecklist(x: TripExtraction, vehicle: Assessment["vehicle"]
   return list;
 }
 
-export type TripOptions = { distanceKm: number; companionHours: number };
+export type TripOptions = {
+  distanceKm: number;
+  companionHours: number;
+  wheelchairRental?: boolean;
+  seniorPwdDiscount?: boolean;
+};
 
 export function assess(x: TripExtraction, opts: TripOptions): Assessment {
   const vehicle = chooseVehicle(x);
@@ -167,10 +186,20 @@ export function assess(x: TripExtraction, opts: TripOptions): Assessment {
   let blockReason: string | null = null;
   if (x.emergencySignals) blockReason = "Possible emergency detected. Call 911 instead of booking.";
   else if (vehicle === "not_supported") blockReason = "Bedbound/stretcher patients need an ambulance service. Please contact one directly.";
-  const quote = priceQuote({ vehicle, crewSize, floorsWithoutElevator: x.floorsWithoutElevator, distanceKm: opts.distanceKm, companionHours: opts.companionHours });
+  const quote = priceQuote({
+    vehicle,
+    crewSize,
+    floorsWithoutElevator: x.floorsWithoutElevator,
+    distanceKm: opts.distanceKm,
+    companionHours: opts.companionHours,
+    wheelchairRental: opts.wheelchairRental,
+    seniorPwdDiscount: opts.seniorPwdDiscount,
+  });
   const companionHours = companionHoursBillable(opts.companionHours);
   const checklist = buildChecklist(x, vehicle, crewSize);
-  if (companionHours) checklist.push(`Hospital companion stays with patient inside the hospital (~${companionHours} h) until the appointment is completed`);
+  if (opts.wheelchairRental) checklist.unshift("Bring a clean, checked wheelchair for the patient (provided by Care Ride)");
+  if (companionHours) checklist.push(`Hospital companion/caregiver stays with patient inside the hospital (~${companionHours} h) until the appointment is completed`);
+  if (opts.seniorPwdDiscount) checklist.push("Check Senior Citizen (OSCA) or PWD ID before the trip; 20% fare discount applied");
 
   return {
     vehicle,

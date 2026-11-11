@@ -68,7 +68,7 @@ describe("pricing: distance bands + hospital companion (AC11, AC12)", () => {
     expect(q.companionSubtotal).toBe(750);
     expect(q.min).toBe(1050); // companion fee is fixed; only transport varies ±15%
     expect(q.max).toBe(1150);
-    expect(q.lines.map((l) => l.label).join(" ")).toMatch(/Hospital companion \(3 h/);
+    expect(q.lines.map((l) => l.label).join(" ")).toMatch(/Hospital companion\/caregiver \(3 h/);
   });
   it("uses the right band at each boundary", () => {
     expect(distanceSurcharge("sedan_assist", 5).amount).toBe(0);

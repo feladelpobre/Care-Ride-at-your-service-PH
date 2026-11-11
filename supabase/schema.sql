@@ -11,6 +11,8 @@ create table if not exists public.bookings (
   pickup_time text,
   distance_km numeric(5,1) not null default 10,
   companion_hours int not null default 0 check (companion_hours between 0 and 12),
+  wheelchair_rental boolean not null default false,
+  senior_pwd_discount boolean not null default false, -- ID is checked by the driver; the ID number is NOT stored (data minimisation)
   trip_purpose text not null,
   mobility text not null,
   vehicle_type text not null,

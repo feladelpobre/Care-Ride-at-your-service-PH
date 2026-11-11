@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { description, distanceKm, companionHours } = parsed.data;
+  const { description, distanceKm, companionHours, addons } = parsed.data;
 
   // 1) Emergency gate BEFORE the AI (AC2)
   if (detectEmergency(description).emergency) {
@@ -54,6 +54,12 @@ export async function POST(req: Request) {
   }
 
   // 4) Deterministic rules: distance, pricing, vehicle, crew, pickup time
-  const plan = buildPlan(extraction, { distanceKm, companionHours });
+  const plan = buildPlan(extraction, {
+    distanceKm,
+    companionHours,
+    companion: addons.companion,
+    wheelchairRental: addons.wheelchair,
+    seniorPwdDiscount: addons.seniorPwd,
+  });
   return NextResponse.json(plan);
 }

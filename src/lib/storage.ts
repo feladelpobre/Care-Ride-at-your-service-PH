@@ -35,6 +35,8 @@ type Row = {
   pickup_time: string | null;
   distance_km: number;
   companion_hours: number;
+  wheelchair_rental: boolean;
+  senior_pwd_discount: boolean;
   trip_purpose: string;
   mobility: string;
   vehicle_type: string;
@@ -58,6 +60,8 @@ const fromRow = (r: Row): Booking => ({
   pickupTime: r.pickup_time,
   distanceKm: Number(r.distance_km),
   companionHours: r.companion_hours,
+  wheelchairRental: r.wheelchair_rental,
+  seniorPwdDiscount: r.senior_pwd_discount,
   tripPurpose: r.trip_purpose,
   mobility: r.mobility,
   vehicleType: r.vehicle_type,
@@ -88,6 +92,8 @@ export async function saveBooking(b: NewBooking): Promise<Booking> {
       pickup_time: b.pickupTime,
       distance_km: b.distanceKm,
       companion_hours: b.companionHours,
+      wheelchair_rental: b.wheelchairRental,
+      senior_pwd_discount: b.seniorPwdDiscount,
       trip_purpose: b.tripPurpose,
       mobility: b.mobility,
       vehicle_type: b.vehicleType,

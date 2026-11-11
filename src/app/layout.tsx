@@ -42,9 +42,20 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </nav>
         </header>
         <main className="mx-auto max-w-3xl px-4 py-8">{children}</main>
-        <footer className="mx-auto max-w-3xl px-4 pb-10 text-xs text-stone-500">
-          Student project (Week 4 Mini Project 4.2). Prices are estimates only; no payments are taken. Demo data only:
-          please don&apos;t enter real medical details.
+        <footer className="mx-auto max-w-3xl space-y-2 px-4 pb-10 text-xs text-stone-500">
+          <nav className="flex flex-wrap gap-4 text-sm">
+            <Link href="/privacy" className="font-medium text-teal-800 underline">
+              Privacy Notice
+            </Link>
+            <Link href="/terms" className="font-medium text-teal-800 underline">
+              Terms of Service
+            </Link>
+          </nav>
+          <p>
+            Student prototype (Week 4 Mini Project 4.2). Non-emergency patient transport only; not an ambulance service. Prices are
+            estimates; no payments are taken. Please use demo data only. Business registration (DTI/BIR), LTFRB accreditation and
+            NPC registration will be completed before real bookings.
+          </p>
         </footer>
         <Analytics />
       </body>

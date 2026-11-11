@@ -6,7 +6,14 @@ import { track } from "@vercel/analytics";
 import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
-import { BASE_FARE, COMPANION_MIN_HOURS, COMPANION_RATE_PER_HOUR, DEFAULT_COMPANION_HOURS, DISTANCE_BANDS } from "@/lib/rules";
+import {
+  BASE_FARE,
+  COMPANION_MIN_HOURS,
+  COMPANION_RATE_PER_HOUR,
+  DEFAULT_COMPANION_HOURS,
+  DISTANCE_BANDS,
+  WHEELCHAIR_RENTAL_FEE,
+} from "@/lib/rules";
 
 const SAMPLES = [
   "Mama uses a wheelchair and can't stand. Dialysis at St. Luke's BGC every Tuesday 9am. We live in Kapitolyo, Pasig, 3rd floor, walang elevator. Walang makakasama sa kanya sa ospital.",
@@ -38,6 +45,11 @@ export default function TripIntake() {
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [companionHours, setCompanionHours] = useState<number>(0);
 
+  // Step 1 tick boxes
+  const [wantWheelchair, setWantWheelchair] = useState(false);
+  const [wantCompanion, setWantCompanion] = useState(false);
+  const [seniorPwd, setSeniorPwd] = useState(false);
+
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [consent, setConsent] = useState(false);
@@ -51,8 +63,10 @@ export default function TripIntake() {
     return buildPlan(extraction, {
       distanceKm: kmChanged ? distanceKm! : aiPlan.options.distanceSource === "caregiver" ? aiPlan.options.distanceKm : undefined,
       companionHours,
+      wheelchairRental: wantWheelchair,
+      seniorPwdDiscount: seniorPwd,
     });
-  }, [extraction, aiPlan, distanceKm, companionHours]);
+  }, [extraction, aiPlan, distanceKm, companionHours, wantWheelchair, seniorPwd]);
 
   async function analyse(e: React.FormEvent) {
     e.preventDefault();
@@ -66,7 +80,10 @@ export default function TripIntake() {
       const res = await fetch("/api/plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description }),
+        body: JSON.stringify({
+          description,
+          addons: { wheelchair: wantWheelchair, companion: wantCompanion, seniorPwd },
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
@@ -80,7 +97,13 @@ export default function TripIntake() {
       setExtraction(p.extraction);
       setDistanceKm(p.options.distanceKm);
       setCompanionHours(p.options.companionHours);
-      track("trip_analyzed", { vehicle: p.assessment.vehicle, companion: p.options.companionHours > 0 });
+      if (p.options.companionHours > 0) setWantCompanion(true);
+      track("trip_analyzed", {
+        vehicle: p.assessment.vehicle,
+        companion: p.options.companionHours > 0,
+        wheelchair: wantWheelchair,
+        seniorPwd,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -140,6 +163,32 @@ export default function TripIntake() {
             </button>
           ))}
         </div>
+        <fieldset className="rounded-xl border border-teal-200 bg-teal-50/60 p-4">
+          <legend className="px-1 text-sm font-semibold text-teal-900">What would you like to avail? (tick all that apply)</legend>
+          <div className="space-y-2">
+            <Tick
+              checked={wantWheelchair}
+              onChange={setWantWheelchair}
+              title="Wheelchair"
+              detail={`We bring a clean wheelchair for the patient to use during the trip and inside the hospital. ${peso(WHEELCHAIR_RENTAL_FEE)} per trip.`}
+            />
+            <Tick
+              checked={wantCompanion}
+              onChange={(v) => {
+                setWantCompanion(v);
+                if (extraction) setCompanionHours(v ? DEFAULT_COMPANION_HOURS[extraction.tripPurpose] : 0);
+              }}
+              title="Hospital companion / caregiver"
+              detail={`A trained caregiver stays with the patient inside the hospital (registration, waiting, transfers) until the appointment is done. ${peso(COMPANION_RATE_PER_HOUR)}/hour, minimum ${COMPANION_MIN_HOURS} hours.`}
+            />
+            <Tick
+              checked={seniorPwd}
+              onChange={setSeniorPwd}
+              title="Patient is a Senior Citizen (60+) or a person with disability (PWD)"
+              detail="20% discount on the ride fare, as required by law (RA 9994 and RA 10754). Please show the OSCA or PWD ID to the driver; we don't store the ID number."
+            />
+          </div>
+        </fieldset>
         <button type="submit" className="btn-primary w-full sm:w-auto" disabled={loading || description.trim().length < 20}>
           {loading ? "Analysing trip…" : "Plan my ride"}
         </button>
@@ -293,13 +342,16 @@ export default function TripIntake() {
               </div>
 
               <fieldset className="rounded-xl border border-teal-200 bg-teal-50/60 p-4">
-                <legend className="px-1 text-sm font-semibold text-teal-900">Add a hospital companion</legend>
+                <legend className="px-1 text-sm font-semibold text-teal-900">Hospital companion / caregiver</legend>
                 <label className="flex min-h-11 cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"
                     className="mt-1 h-5 w-5 accent-teal-800"
                     checked={companionHours > 0}
-                    onChange={(e) => setCompanionHours(e.target.checked ? DEFAULT_COMPANION_HOURS[extraction.tripPurpose] : 0)}
+                    onChange={(e) => {
+                      setWantCompanion(e.target.checked);
+                      setCompanionHours(e.target.checked ? DEFAULT_COMPANION_HOURS[extraction.tripPurpose] : 0);
+                    }}
                   />
                   <span className="text-sm text-stone-700">
                     A trained companion stays with the patient <strong>inside the hospital</strong> (registration, waiting,
@@ -325,6 +377,21 @@ export default function TripIntake() {
                   </div>
                 )}
               </fieldset>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Tick
+                  checked={wantWheelchair}
+                  onChange={setWantWheelchair}
+                  title="Wheelchair"
+                  detail={`We bring one for the trip · ${peso(WHEELCHAIR_RENTAL_FEE)}`}
+                />
+                <Tick
+                  checked={seniorPwd}
+                  onChange={setSeniorPwd}
+                  title="Senior Citizen / PWD"
+                  detail="20% off the ride fare · show ID to driver"
+                />
+              </div>
 
               <table className="w-full text-sm">
                 <tbody>
@@ -420,8 +487,18 @@ export default function TripIntake() {
                   </div>
                   <label className="flex items-start gap-3 text-sm text-stone-700 sm:col-span-2">
                     <input type="checkbox" className="mt-1 h-5 w-5 accent-teal-800" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
-                    I agree that Care Ride stores these trip details to arrange the ride. I didn&apos;t include diagnoses or other
-                    sensitive medical details.
+                    <span>
+                      I consent to Care Ride processing these trip details, including the patient&apos;s mobility needs (health
+                      information), only to arrange and carry out this ride, as described in the{" "}
+                      <Link href="/privacy" className="font-medium text-teal-800 underline">
+                        Privacy Notice
+                      </Link>
+                      . I agree to the{" "}
+                      <Link href="/terms" className="font-medium text-teal-800 underline">
+                        Terms of Service
+                      </Link>
+                      . I didn&apos;t include diagnoses or other medical details that aren&apos;t needed.
+                    </span>
                   </label>
                   <button type="submit" className="btn-primary sm:col-span-2" disabled={saving || !consent || contactName.trim().length < 2}>
                     {saving ? "Sending…" : `Request this ride · ${peso(plan.assessment.quote.total)} est.`}
@@ -433,6 +510,23 @@ export default function TripIntake() {
         </>
       )}
     </div>
+  );
+}
+
+function Tick(props: { checked: boolean; onChange: (v: boolean) => void; title: string; detail: string }) {
+  return (
+    <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg p-1 hover:bg-white/70">
+      <input
+        type="checkbox"
+        className="mt-1 h-5 w-5 shrink-0 accent-teal-800"
+        checked={props.checked}
+        onChange={(e) => props.onChange(e.target.checked)}
+      />
+      <span className="text-sm text-stone-700">
+        <span className="block font-semibold text-stone-900">{props.title}</span>
+        {props.detail}
+      </span>
+    </label>
   );
 }
 
