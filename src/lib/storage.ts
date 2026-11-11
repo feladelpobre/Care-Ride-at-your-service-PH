@@ -2,7 +2,7 @@ import "server-only";
 import { unstable_noStore as noStore } from "next/cache";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Booking } from "./schemas";
-import type { EventName, EventProps } from "./insights";
+import type { BookingFlags, EventName, EventProps } from "./insights";
 import { referenceToIdRange, type FeedbackRecord, type FeedbackRequest } from "./feedback";
 
 export type NewBooking = Omit<Booking, "id" | "createdAt" | "status">;
@@ -168,6 +168,35 @@ export async function recordEvent(name: EventName, props: EventProps = {}): Prom
   } catch {
     console.error("events: insert threw");
   }
+}
+
+/**
+ * Add-on flags of every ride request saved in the last `days` days (default 30).
+ * The bookings table is the source of truth for request counts: a funnel event can be
+ * missing (insert failed, or the booking predates event logging), a saved booking cannot.
+ */
+export async function listBookingFlags(days = 30): Promise<BookingFlags[]> {
+  noStore();
+  const since = Date.now() - days * 86_400_000;
+  const toFlags = (companionHours: number, wheelchair: boolean, seniorPwd: boolean): BookingFlags => ({
+    companion: companionHours > 0,
+    wheelchair,
+    seniorPwd,
+  });
+  if (storageMode() === "memory") {
+    return memory
+      .filter((b) => Date.parse(b.createdAt) >= since)
+      .map((b) => toFlags(b.companionHours, b.wheelchairRental, b.seniorPwdDiscount));
+  }
+  const { data, error } = await db()
+    .from("bookings")
+    .select("companion_hours, wheelchair_rental, senior_pwd_discount")
+    .gte("created_at", new Date(since).toISOString())
+    .limit(10000);
+  if (error) throw new Error(`booking flags list failed: ${error.code ?? "unknown"}`);
+  return (data as Pick<Row, "companion_hours" | "wheelchair_rental" | "senior_pwd_discount">[]).map((r) =>
+    toFlags(r.companion_hours, r.wheelchair_rental, r.senior_pwd_discount),
+  );
 }
 
 /** Events from the last `days` days (default 30). */

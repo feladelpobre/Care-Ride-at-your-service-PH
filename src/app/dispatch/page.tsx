@@ -1,4 +1,4 @@
-import { listBookings, listEvents, listFeedback, maskName, maskPhone, storageMode } from "@/lib/storage";
+import { listBookingFlags, listBookings, listEvents, listFeedback, maskName, maskPhone, storageMode } from "@/lib/storage";
 import { averageRating, feedbackTicket, ISSUE_TYPES, type FeedbackRecord } from "@/lib/feedback";
 import { bookingReference, formatManilaDateTime } from "@/lib/format";
 import { computeInsights, CONVERSION_TARGET_PCT, type Insights } from "@/lib/insights";
@@ -21,7 +21,8 @@ export default async function DispatchPage() {
     failed = true;
   }
   try {
-    insights = computeInsights(await listEvents(30));
+    const [events, savedBookings] = await Promise.all([listEvents(30), listBookingFlags(30)]);
+    insights = computeInsights(events, savedBookings);
   } catch {
     insights = null;
   }

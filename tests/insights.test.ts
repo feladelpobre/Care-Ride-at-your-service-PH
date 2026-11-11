@@ -20,6 +20,26 @@ describe("funnel insights (AC16)", () => {
     ]);
     expect(i).toMatchObject({ tripsPlanned: 4, bookings: 2, emergencies: 1, conversionPct: 50, companionPct: 50, wheelchairPct: 50, seniorPwdPct: 100, meetsConversionTarget: true });
   });
+  it("counts ride requests from saved bookings, so the panel matches the dispatcher board", () => {
+    // 2 booking_confirmed events were logged, but 5 bookings are saved (e.g. older ones predate event logging)
+    const events = [
+      ...Array.from({ length: 8 }, () => ({ name: "trip_analyzed" as const, props: {} })),
+      { name: "booking_confirmed" as const, props: { companion: true, wheelchair: true, seniorPwd: true } },
+      { name: "booking_confirmed" as const, props: { companion: false, wheelchair: false, seniorPwd: false } },
+    ];
+    const saved = [
+      { companion: true, wheelchair: true, seniorPwd: true },
+      { companion: true, wheelchair: true, seniorPwd: true },
+      { companion: false, wheelchair: true, seniorPwd: true },
+      { companion: false, wheelchair: false, seniorPwd: false },
+      { companion: false, wheelchair: false, seniorPwd: false },
+    ];
+    expect(computeInsights(events, saved)).toMatchObject({ tripsPlanned: 8, bookings: 5, conversionPct: 63, companionPct: 40, wheelchairPct: 60, seniorPwdPct: 60, meetsConversionTarget: true });
+  });
+  it("never reports more than 100% plan-to-request", () => {
+    const saved = Array.from({ length: 3 }, () => ({ companion: false, wheelchair: false, seniorPwd: false }));
+    expect(computeInsights([{ name: "trip_analyzed", props: {} }], saved).conversionPct).toBe(100);
+  });
   it("shows no rate when there is no data yet", () => {
     expect(computeInsights([])).toMatchObject({ conversionPct: null, meetsConversionTarget: null });
   });
