@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bookingRequestSchema } from "@/lib/schemas";
-import { assess, buildDriverBrief } from "@/lib/rules";
+import { buildPlan } from "@/lib/plan";
 import { saveBooking } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -24,7 +24,8 @@ export async function POST(req: Request) {
 
   // Never trust client-sent assessment: recompute (AC8)
   const x = plan.extraction;
-  const assessment = assess(x, plan.travelMinutes);
+  const fresh = buildPlan(x, { distanceKm: plan.options.distanceKm, companionHours: plan.options.companionHours });
+  const assessment = fresh.assessment;
   if (assessment.blocked) {
     return NextResponse.json({ error: assessment.blockReason }, { status: 422 });
   }
@@ -38,13 +39,15 @@ export async function POST(req: Request) {
       appointmentDate: x.appointmentDate,
       appointmentTime: x.appointmentTime,
       pickupTime: assessment.pickupTime,
+      distanceKm: fresh.options.distanceKm,
+      companionHours: assessment.companionHours,
       tripPurpose: x.tripPurpose,
       mobility: x.mobility,
       vehicleType: assessment.vehicle,
       crewSize: assessment.crewSize,
       fareMin: assessment.fare.min,
       fareMax: assessment.fare.max,
-      driverBrief: buildDriverBrief(x, assessment),
+      driverBrief: fresh.driverBrief,
       recurring: x.recurring,
     });
     return NextResponse.json({ booking: { id: booking.id, status: booking.status, assessment } }, { status: 201 });

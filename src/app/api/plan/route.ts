@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { planRequestSchema, type TripPlan } from "@/lib/schemas";
+import { planRequestSchema } from "@/lib/schemas";
 import { detectEmergency, EMERGENCY_MESSAGE } from "@/lib/emergency";
 import { AiNotConfiguredError, extractTrip } from "@/lib/ai";
-import { assess, buildDriverBrief } from "@/lib/rules";
+import { buildPlan } from "@/lib/plan";
 import { clientKey, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { description, travelMinutes } = parsed.data;
+  const { description, distanceKm, companionHours } = parsed.data;
 
   // 1) Emergency gate BEFORE the AI (AC2)
   if (detectEmergency(description).emergency) {
@@ -51,15 +51,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ emergency: true, message: EMERGENCY_MESSAGE });
   }
 
-  // 4) Deterministic rules
-  const assessment = assess(extraction, travelMinutes);
-  const plan: TripPlan = {
-    extraction,
-    assessment,
-    driverBrief: buildDriverBrief(extraction, assessment),
-    travelMinutes,
-    emergency: false,
-    source: "ai",
-  };
+  // 4) Deterministic rules: distance, pricing, vehicle, crew, pickup time
+  const plan = buildPlan(extraction, { distanceKm, companionHours });
   return NextResponse.json(plan);
 }

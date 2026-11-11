@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { assess, buildDriverBrief, chooseCrew, chooseVehicle, computePickupTime, estimateFare } from "@/lib/rules";
+import { assess, buildDriverBrief, chooseCrew, chooseVehicle, companionHoursBillable, computePickupTime, distanceSurcharge, priceQuote } from "@/lib/rules";
 import { normalizeExtraction, normalizeTime } from "@/lib/normalize";
 import { aiRaw, x } from "./fixtures";
+
+const OPTS = { distanceKm: 10, companionHours: 0 };
 
 describe("vehicle selection (AC3)", () => {
   it("must-stay-seated wheelchair users get a ramp/lift van", () => {
     expect(chooseVehicle(x({ mobility: "wheelchair_must_stay_seated" }))).toBe("wav_ramp_van");
   });
   it("bedbound patients are not supported and the plan is blocked", () => {
-    const a = assess(x({ mobility: "stretcher_bedbound" }), 45);
+    const a = assess(x({ mobility: "stretcher_bedbound" }), OPTS);
     expect(a.vehicle).toBe("not_supported");
     expect(a.blocked).toBe(true);
     expect(a.blockReason).toMatch(/ambulance/i);
@@ -25,7 +27,7 @@ describe("crew size (AC4)", () => {
   it("wheelchair + 3 floors without elevator needs 2 crew and stair assist", () => {
     const ext = x({ mobility: "wheelchair_must_stay_seated", floorsWithoutElevator: 3 });
     expect(chooseCrew(ext)).toBe(2);
-    expect(assess(ext, 45).assistChecklist.join(" ")).toMatch(/stair assist/i);
+    expect(assess(ext, OPTS).assistChecklist.join(" ")).toMatch(/stair assist/i);
   });
   it("ground-floor wheelchair user needs 1 crew", () => {
     expect(chooseCrew(x({ floorsWithoutElevator: 0 }))).toBe(1);
@@ -53,13 +55,40 @@ describe("pickup time (AC5, AC6)", () => {
   });
 });
 
-describe("fare estimate", () => {
-  it("WAV with 2 crew and 3 floors", () => {
-    // mid = 900 + 300 + 300 = 1500 -> 1280..1730 (rounded to ₱10)
-    expect(estimateFare({ vehicle: "wav_ramp_van", crewSize: 2, floorsWithoutElevator: 3 })).toEqual({ min: 1280, max: 1730 });
+describe("pricing: distance bands + hospital companion (AC11, AC12)", () => {
+  it("WAV, 2 crew, 3 floors, 10 km -> ₱1,800 (range ₱1,530–₱2,070)", () => {
+    const q = priceQuote({ vehicle: "wav_ramp_van", crewSize: 2, floorsWithoutElevator: 3, distanceKm: 10, companionHours: 0 });
+    expect(q.transportSubtotal).toBe(1800);
+    expect(q.min).toBe(1530);
+    expect(q.max).toBe(2070);
   });
-  it("not_supported has no fare", () => {
-    expect(estimateFare({ vehicle: "not_supported", crewSize: 1, floorsWithoutElevator: 0 })).toEqual({ min: 0, max: 0 });
+  it("sedan 3 km + 3 h hospital companion -> ₱350 + ₱750 = ₱1,100", () => {
+    const q = priceQuote({ vehicle: "sedan_assist", crewSize: 1, floorsWithoutElevator: 0, distanceKm: 3, companionHours: 3 });
+    expect(q.total).toBe(1100);
+    expect(q.companionSubtotal).toBe(750);
+    expect(q.min).toBe(1050); // companion fee is fixed; only transport varies ±15%
+    expect(q.max).toBe(1150);
+    expect(q.lines.map((l) => l.label).join(" ")).toMatch(/Hospital companion \(3 h/);
+  });
+  it("uses the right band at each boundary", () => {
+    expect(distanceSurcharge("sedan_assist", 5).amount).toBe(0);
+    expect(distanceSurcharge("sedan_assist", 5.5).amount).toBe(150);
+    expect(distanceSurcharge("wav_ramp_van", 20).amount).toBe(750);
+    expect(distanceSurcharge("sedan_assist", 45)).toEqual({ label: "Over 40 km", amount: 1050 }); // 900 + 5 km × ₱30
+  });
+  it("companion hours: none = 0, otherwise minimum 2 and maximum 12", () => {
+    expect(companionHoursBillable(0)).toBe(0);
+    expect(companionHoursBillable(1)).toBe(2);
+    expect(companionHoursBillable(4.2)).toBe(5);
+    expect(companionHoursBillable(15)).toBe(12);
+  });
+  it("not_supported has no price", () => {
+    expect(priceQuote({ vehicle: "not_supported", crewSize: 1, floorsWithoutElevator: 0, distanceKm: 10, companionHours: 3 }).total).toBe(0);
+  });
+  it("assess() adds the companion to the driver checklist", () => {
+    const a = assess(x(), { distanceKm: 10, companionHours: 3 });
+    expect(a.companionHours).toBe(3);
+    expect(a.assistChecklist.join(" ")).toMatch(/Hospital companion/);
   });
 });
 
@@ -85,7 +114,7 @@ describe("normalisation (AC6, AC7)", () => {
 describe("driver brief", () => {
   it("includes pickup time, vehicle, crew and checklist items", () => {
     const ext = x({ mobility: "wheelchair_must_stay_seated", floorsWithoutElevator: 3, tripPurpose: "dialysis", recurring: true, recurrenceNote: "Tue/Thu/Sat" });
-    const a = assess(ext, 45);
+    const a = assess(ext, OPTS);
     const brief = buildDriverBrief(ext, a).join("\n");
     expect(brief).toContain(a.pickupTime!);
     expect(brief).toMatch(/Crew: 2/);

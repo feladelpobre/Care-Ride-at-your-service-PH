@@ -1,4 +1,5 @@
 import type { Assessment, TripExtraction } from "./schemas";
+import { estimateTravelMinutes } from "./geo";
 
 /**
  * Deterministic, unit-tested rules engine (spec §3.2).
@@ -57,18 +58,83 @@ export function computePickupTime(args: {
   return { pickupTime: fromMinutes(floored), breakdown };
 }
 
-export function estimateFare(args: {
+/** Distance bands (spec §3.5). Base fare includes the first 5 km. */
+export const DISTANCE_BANDS = [
+  { upToKm: 5, label: "0–5 km", sedan_assist: 0, wav_ramp_van: 0 },
+  { upToKm: 10, label: "5.1–10 km", sedan_assist: 150, wav_ramp_van: 300 },
+  { upToKm: 20, label: "10.1–20 km", sedan_assist: 400, wav_ramp_van: 750 },
+  { upToKm: 40, label: "20.1–40 km", sedan_assist: 900, wav_ramp_van: 1600 },
+] as const;
+export const BASE_FARE = { sedan_assist: 350, wav_ramp_van: 900 } as const;
+export const OVER_40_PER_KM = { sedan_assist: 30, wav_ramp_van: 50 } as const;
+export const SECOND_CREW_FEE = 300;
+export const STAIR_FEE_PER_FLOOR = 100;
+export const COMPANION_RATE_PER_HOUR = 250;
+export const COMPANION_MIN_HOURS = 2;
+
+/** Typical hours a hospital companion is needed, by trip purpose. */
+export const DEFAULT_COMPANION_HOURS: Record<TripExtraction["tripPurpose"], number> = {
+  dialysis: 5,
+  checkup: 3,
+  therapy: 2,
+  chemotherapy: 6,
+  discharge: 3,
+  other: 3,
+};
+
+export function distanceBand(km: number) {
+  return DISTANCE_BANDS.find((b) => km <= b.upToKm) ?? null; // null = over 40 km
+}
+
+export function distanceSurcharge(vehicle: "sedan_assist" | "wav_ramp_van", km: number): { label: string; amount: number } {
+  const band = distanceBand(km);
+  if (band) return { label: band.label, amount: band[vehicle] };
+  const last = DISTANCE_BANDS[DISTANCE_BANDS.length - 1];
+  return { label: "Over 40 km", amount: last[vehicle] + Math.ceil(km - 40) * OVER_40_PER_KM[vehicle] };
+}
+
+/** Billable companion hours: 0 = not requested; otherwise at least the minimum, max 12. */
+export function companionHoursBillable(hours: number): number {
+  if (!hours || hours <= 0) return 0;
+  return Math.min(12, Math.max(COMPANION_MIN_HOURS, Math.ceil(hours)));
+}
+
+const round10 = (n: number) => Math.round(n / 10) * 10;
+
+/** One-way price estimate: transport (±15% traffic range) + optional hospital companion (fixed). */
+export function priceQuote(args: {
   vehicle: Assessment["vehicle"];
   crewSize: 1 | 2;
   floorsWithoutElevator: number;
-}): { min: number; max: number } {
-  if (args.vehicle === "not_supported") return { min: 0, max: 0 };
-  const base = args.vehicle === "wav_ramp_van" ? 900 : 350;
-  const crew = args.crewSize === 2 ? 300 : 0;
-  const stairs = args.crewSize === 2 ? 100 * args.floorsWithoutElevator : 0;
-  const mid = base + crew + stairs;
-  const round10 = (n: number) => Math.round(n / 10) * 10;
-  return { min: round10((mid * 85) / 100), max: round10((mid * 115) / 100) };
+  distanceKm: number;
+  companionHours: number;
+}): Assessment["quote"] {
+  if (args.vehicle === "not_supported") {
+    return { lines: [], transportSubtotal: 0, companionSubtotal: 0, total: 0, min: 0, max: 0 };
+  }
+  const v = args.vehicle;
+  const dist = distanceSurcharge(v, args.distanceKm);
+  const lines: { label: string; amount: number }[] = [
+    { label: `Base fare (${v === "wav_ramp_van" ? "wheelchair van" : "assist sedan"}, first 5 km)`, amount: BASE_FARE[v] },
+    { label: `Distance ${dist.label} (${args.distanceKm} km)`, amount: dist.amount },
+  ];
+  if (args.crewSize === 2) {
+    lines.push({ label: "Second crew member", amount: SECOND_CREW_FEE });
+    lines.push({ label: `Stair assist (${args.floorsWithoutElevator} floor/s)`, amount: STAIR_FEE_PER_FLOOR * args.floorsWithoutElevator });
+  }
+  const transportSubtotal = lines.reduce((s, l) => s + l.amount, 0);
+  const hrs = companionHoursBillable(args.companionHours);
+  const companionSubtotal = hrs * COMPANION_RATE_PER_HOUR;
+  if (hrs) lines.push({ label: `Hospital companion (${hrs} h × ₱${COMPANION_RATE_PER_HOUR})`, amount: companionSubtotal });
+  const total = transportSubtotal + companionSubtotal;
+  return {
+    lines,
+    transportSubtotal,
+    companionSubtotal,
+    total,
+    min: round10((transportSubtotal * 85) / 100) + companionSubtotal,
+    max: round10((transportSubtotal * 115) / 100) + companionSubtotal,
+  };
 }
 
 export function buildChecklist(x: TripExtraction, vehicle: Assessment["vehicle"], crew: 1 | 2): string[] {
@@ -85,9 +151,12 @@ export function buildChecklist(x: TripExtraction, vehicle: Assessment["vehicle"]
   return list;
 }
 
-export function assess(x: TripExtraction, travelMinutes: number): Assessment {
+export type TripOptions = { distanceKm: number; companionHours: number };
+
+export function assess(x: TripExtraction, opts: TripOptions): Assessment {
   const vehicle = chooseVehicle(x);
   const crewSize = chooseCrew(x);
+  const travelMinutes = estimateTravelMinutes(opts.distanceKm);
   const { pickupTime, breakdown } = computePickupTime({
     appointmentTime: x.appointmentTime,
     travelMinutes,
@@ -98,15 +167,22 @@ export function assess(x: TripExtraction, travelMinutes: number): Assessment {
   let blockReason: string | null = null;
   if (x.emergencySignals) blockReason = "Possible emergency detected. Call 911 instead of booking.";
   else if (vehicle === "not_supported") blockReason = "Bedbound/stretcher patients need an ambulance service. Please contact one directly.";
+  const quote = priceQuote({ vehicle, crewSize, floorsWithoutElevator: x.floorsWithoutElevator, distanceKm: opts.distanceKm, companionHours: opts.companionHours });
+  const companionHours = companionHoursBillable(opts.companionHours);
+  const checklist = buildChecklist(x, vehicle, crewSize);
+  if (companionHours) checklist.push(`Hospital companion stays with patient inside the hospital (~${companionHours} h) until the appointment is completed`);
 
   return {
     vehicle,
     vehicleLabel: VEHICLE_LABEL[vehicle],
     crewSize,
-    assistChecklist: buildChecklist(x, vehicle, crewSize),
+    assistChecklist: checklist,
+    travelMinutes,
     pickupTime,
     pickupBreakdown: breakdown,
-    fare: estimateFare({ vehicle, crewSize, floorsWithoutElevator: x.floorsWithoutElevator }),
+    companionHours,
+    quote,
+    fare: { min: quote.min, max: quote.max },
     blocked: blockReason !== null,
     blockReason,
   };

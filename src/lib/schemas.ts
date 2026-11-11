@@ -29,6 +29,9 @@ export const aiExtractionSchema = z.object({
   companions: z.number().describe("Number of companions riding along, excluding patient"),
   recurring: z.boolean(),
   recurrenceNote: z.string().nullable(),
+  wantsHospitalCompanion: z
+    .boolean()
+    .describe("true if the caregiver asks for someone to stay with/assist the patient inside the hospital (e.g., 'walang makakasama', 'need someone to stay with her')"),
   emergencySignals: z.boolean().describe("true if any sign of acute illness or emergency"),
   missingInfo: z.array(z.string()).describe("Details the caregiver still needs to provide"),
   caregiverSummary: z.string().describe("1-2 sentence neutral summary without names or diagnoses"),
@@ -51,6 +54,7 @@ export const tripExtractionSchema = z.object({
   companions: z.number().int().min(0).max(3),
   recurring: z.boolean(),
   recurrenceNote: z.string().max(120).nullable(),
+  wantsHospitalCompanion: z.boolean(),
   emergencySignals: z.boolean(),
   missingInfo: z.array(z.string().max(120)).max(8),
   caregiverSummary: z.string().max(280),
@@ -62,19 +66,42 @@ export const assessmentSchema = z.object({
   vehicleLabel: z.string(),
   crewSize: z.union([z.literal(1), z.literal(2)]),
   assistChecklist: z.array(z.string()),
+  travelMinutes: z.number().int(),
   pickupTime: z.string().regex(hhmm).nullable(),
   pickupBreakdown: z.array(z.string()),
+  companionHours: z.number().int().min(0).max(12),
+  quote: z.object({
+    lines: z.array(z.object({ label: z.string(), amount: z.number() })),
+    transportSubtotal: z.number(),
+    companionSubtotal: z.number(),
+    total: z.number(),
+    min: z.number(),
+    max: z.number(),
+  }),
   fare: z.object({ min: z.number(), max: z.number() }),
   blocked: z.boolean(),
   blockReason: z.string().nullable(),
 });
 export type Assessment = z.infer<typeof assessmentSchema>;
 
+export const tripOptionsSchema = z.object({
+  distanceKm: z.coerce.number().min(0.5).max(150),
+  distanceSource: z.enum(["estimated", "default", "caregiver"]),
+  companionHours: z.coerce.number().int().min(0).max(12),
+});
+export type TripOptionsInput = z.infer<typeof tripOptionsSchema>;
+
 export const tripPlanSchema = z.object({
   extraction: tripExtractionSchema,
   assessment: assessmentSchema,
   driverBrief: z.array(z.string()),
-  travelMinutes: z.number().int().min(10).max(180),
+  options: tripOptionsSchema,
+  route: z.object({
+    note: z.string(),
+    pickupCity: z.string().nullable(),
+    hospital: z.string().nullable(),
+    nearestHospitals: z.array(z.object({ name: z.string(), km: z.number() })),
+  }),
   emergency: z.literal(false),
   source: z.literal("ai"),
 });
@@ -96,7 +123,8 @@ export const planRequestSchema = z.object({
         .min(20, "Please add a bit more detail (at least 20 characters).")
         .max(1500, "That's too long. Please keep it under 1,500 characters."),
     ),
-  travelMinutes: z.coerce.number().int().min(10).max(180).default(45),
+  distanceKm: z.coerce.number().min(0.5).max(150).optional(),
+  companionHours: z.coerce.number().int().min(0).max(12).optional(),
 });
 export type PlanRequest = z.infer<typeof planRequestSchema>;
 
@@ -122,6 +150,8 @@ export type Booking = {
   appointmentDate: string | null;
   appointmentTime: string | null;
   pickupTime: string | null;
+  distanceKm: number;
+  companionHours: number;
   tripPurpose: string;
   mobility: string;
   vehicleType: string;

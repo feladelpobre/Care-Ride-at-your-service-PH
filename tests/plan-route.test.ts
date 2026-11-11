@@ -8,7 +8,7 @@ vi.mock("@/lib/ai", () => ({
   isAiConfigured: () => true,
 }));
 
-const { POST } = await import("@/app/api/plan/route");
+import { POST } from "@/app/api/plan/route";
 
 const call = (body: unknown, ip = "1.1.1.1") =>
   POST(new Request("http://test/api/plan", { method: "POST", headers: { "x-forwarded-for": ip }, body: JSON.stringify(body) }));
@@ -32,13 +32,18 @@ describe("POST /api/plan", () => {
 
   it("returns a full plan using AI extraction + rules (F1–F3)", async () => {
     extractTrip.mockResolvedValue(x({ mobility: "wheelchair_must_stay_seated", floorsWithoutElevator: 3, tripPurpose: "dialysis" }));
-    const res = await call({ description: "Mama uses a wheelchair, dialysis at St. Luke's BGC Tuesday 9am, 3rd floor no elevator" }, "2.2.2.2");
+    const res = await call(
+      { description: "Mama uses a wheelchair, dialysis at St. Luke's BGC Tuesday 9am, 3rd floor no elevator", distanceKm: 10 },
+      "2.2.2.2",
+    );
     expect(res.status).toBe(200);
     const plan = await res.json();
     expect(plan.assessment.vehicle).toBe("wav_ramp_van");
     expect(plan.assessment.crewSize).toBe(2);
     expect(plan.assessment.pickupTime).toBe("07:10"); // 9:00-30-45-20-15
     expect(plan.driverBrief.length).toBeGreaterThan(3);
+    expect(plan.options.distanceSource).toBe("caregiver");
+    expect(plan.assessment.quote.total).toBe(1800); // 900 base + 300 (5.1–10 km) + 300 crew + 300 stairs
   });
 
   it("blocks when the AI flags emergency signals", async () => {

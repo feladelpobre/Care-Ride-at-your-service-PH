@@ -12,6 +12,7 @@ export const baseExtraction: TripExtraction = {
   companions: 1,
   recurring: false,
   recurrenceNote: null,
+  wantsHospitalCompanion: false,
   emergencySignals: false,
   missingInfo: [],
   caregiverSummary: "Wheelchair user going to a check-up.",

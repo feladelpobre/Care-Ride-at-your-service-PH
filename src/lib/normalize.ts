@@ -56,6 +56,7 @@ export function normalizeExtraction(ai: AiExtraction): TripExtraction {
     companions: clampInt(ai.companions, 0, 3),
     recurring: ai.recurring,
     recurrenceNote: cut(ai.recurrenceNote, 120),
+    wantsHospitalCompanion: Boolean(ai.wantsHospitalCompanion),
     emergencySignals: ai.emergencySignals,
     missingInfo: Array.from(missing).map((s) => s.slice(0, 120)).slice(0, 8),
     caregiverSummary: (ai.caregiverSummary ?? "").trim().slice(0, 280),
