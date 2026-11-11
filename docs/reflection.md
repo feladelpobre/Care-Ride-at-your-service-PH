@@ -1,9 +1,9 @@
-# Reflection: Building CareRide PH (1 page)
+# Reflection: Building Care Ride at your service-PH (1 page)
 
 **Feladel "Peng" Pobre · Week 4 Graded Mini Project 4.2**
 
 ## What I built
-CareRide PH is a live, AI-powered web app that helps caregivers in Metro Manila book a wheelchair-appropriate ride to the hospital. A caregiver types one message in English or Taglish. The AI (Vercel AI SDK + OpenAI, structured output) extracts the trip details, and tested rules decide the vehicle, crew size, pickup time and a distance-based price, with an optional hospital companion who stays until the appointment is done. It ships with a PRD, a spec, CI on GitHub Actions and a Vercel deployment.
+Care Ride at your service-PH is a live, AI-powered web app that helps caregivers in Metro Manila book a wheelchair-appropriate ride to the hospital. A caregiver types one message in English or Taglish. The AI (Vercel AI SDK + OpenAI, structured output) extracts the trip details, and tested rules decide the vehicle, crew size, pickup time and a distance-based price, with an optional hospital companion who stays until the appointment is done. It ships with a PRD, a spec, CI on GitHub Actions and a Vercel deployment.
 
 ## Key learnings
 1. **Validation before code saves effort.** The 7-step framework moved me from "a transport business" to a sharper problem: *capturing the patient's mobility needs before the vehicle is sent*. The PGH study (82.3% cite accessibility as the top barrier) and the competitor gap matrix showed that intake and matching, not owning vans, was the opening.

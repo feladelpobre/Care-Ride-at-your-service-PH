@@ -420,7 +420,7 @@ export default function TripIntake() {
                   </div>
                   <label className="flex items-start gap-3 text-sm text-stone-700 sm:col-span-2">
                     <input type="checkbox" className="mt-1 h-5 w-5 accent-teal-800" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
-                    I agree that CareRide stores these trip details to arrange the ride. I didn&apos;t include diagnoses or other
+                    I agree that Care Ride stores these trip details to arrange the ride. I didn&apos;t include diagnoses or other
                     sensitive medical details.
                   </label>
                   <button type="submit" className="btn-primary sm:col-span-2" disabled={saving || !consent || contactName.trim().length < 2}>

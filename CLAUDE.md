@@ -1,4 +1,4 @@
-# CLAUDE.md — CareRide PH
+# CLAUDE.md — Care Ride at your service-PH
 
 Guidance for AI coding agents (Claude Code, Cursor, etc.) working in this repo.
 

@@ -1,7 +1,7 @@
-# .cursorrules — CareRide PH
+# .cursorrules — Care Ride at your service-PH
 # Project rules for Cursor's AI. Full context: CLAUDE.md and spec.md.
 
-You are working on CareRide PH: Next.js 14 (App Router) + TypeScript + Tailwind + Vercel AI SDK (OpenAI) + zod + Supabase.
+You are working on Care Ride at your service-PH: Next.js 14 (App Router) + TypeScript + Tailwind + Vercel AI SDK (OpenAI) + zod + Supabase.
 
 ## Always
 - Read spec.md before changing behaviour; keep code consistent with its acceptance criteria (AC1–AC10).

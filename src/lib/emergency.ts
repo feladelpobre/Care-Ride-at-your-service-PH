@@ -21,7 +21,7 @@ const RED_FLAGS: RegExp[] = [
 ];
 
 export const EMERGENCY_MESSAGE =
-  "This sounds like a medical emergency. CareRide is for non-emergency trips only. Call 911 now (or your nearest hospital emergency line).";
+  "This sounds like a medical emergency. Care Ride is for non-emergency trips only. Call 911 now (or your nearest hospital emergency line).";
 
 export function detectEmergency(text: string): { emergency: boolean; matched: string[] } {
   const matched = RED_FLAGS.filter((re) => re.test(text)).map((re) => re.source);

@@ -7,9 +7,9 @@ import "./globals.css";
 const geistSans = localFont({ src: "./fonts/GeistVF.woff", variable: "--font-geist-sans", weight: "100 900" });
 
 export const metadata: Metadata = {
-  title: "CareRide PH: wheelchair-safe rides to the hospital",
+  title: "Care Ride at your service-PH: wheelchair-safe rides to the hospital",
   description:
-    "Describe the trip in plain words. CareRide plans a wheelchair-appropriate ride, pickup time and price estimate for hospital and dialysis visits in Metro Manila.",
+    "Describe the trip in plain words. Care Ride plans a wheelchair-appropriate ride, pickup time and price estimate for hospital and dialysis visits in Metro Manila.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -25,13 +25,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </div>
         <header className="border-b border-stone-200 bg-white">
           <nav className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3">
-            <Link href="/" className="flex items-center gap-2 text-lg font-bold text-teal-900">
-              <span aria-hidden className="grid h-8 w-8 place-items-center rounded-lg bg-teal-800 text-white">
+            <Link href="/" className="flex items-center gap-2 text-base font-bold leading-tight text-teal-900 sm:text-lg">
+              <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-teal-800 text-white">
                 ♿
               </span>
-              CareRide PH
+              Care Ride at your service-PH
             </Link>
-            <div className="flex gap-1 text-sm">
+            <div className="flex shrink-0 gap-1 text-sm">
               <Link href="/" className="rounded-md px-3 py-2 font-medium text-stone-700 hover:bg-stone-100">
                 Book a ride
               </Link>

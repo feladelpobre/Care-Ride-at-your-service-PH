@@ -1,4 +1,4 @@
--- CareRide PH bookings table (spec §7, architecture §5)
+-- Care Ride at your service-PH bookings table (spec §7, architecture §5)
 create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),

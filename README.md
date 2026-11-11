@@ -1,9 +1,9 @@
-# CareRide PH ♿🚐
+# Care Ride at your service-PH ♿🚐
 
 [![CI](https://github.com/feladelpobre/care-ride-at-your-service-ph/actions/workflows/ci.yml/badge.svg)](https://github.com/feladelpobre/care-ride-at-your-service-ph/actions/workflows/ci.yml)
 
 **Wheelchair-safe rides to the hospital, planned in one message.**
-A caregiver describes the trip in plain English or Taglish. CareRide's AI turns it into a structured ride plan: the right vehicle, crew size, pickup time, a distance-based price estimate, an optional hospital companion, and a driver brief.
+A caregiver describes the trip in plain English or Taglish. Care Ride's AI turns it into a structured ride plan: the right vehicle, crew size, pickup time, a distance-based price estimate, an optional hospital companion, and a driver brief.
 
 🔗 **Live app:** https://care-ride-at-your-service-ph.vercel.app · 🎬 **Demo video:** _add link_ · 📄 **Reflection:** [`docs/reflection.md`](docs/reflection.md)
 

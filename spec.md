@@ -1,4 +1,4 @@
-# spec.md — CareRide PH
+# spec.md — Care Ride at your service-PH
 
 **Version:** 1.2 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
 

@@ -1,8 +1,8 @@
-# CareRide PH — Idea Validation Report
+# Care Ride at your service-PH — Idea Validation Report
 
 **Author:** Feladel "Peng" Pobre · **Course:** Week 4 Graded Mini Project 4.2 · **Date:** 11 Nov 2026
 
-> **One-liner:** CareRide PH helps family caregivers in Metro Manila book a safe, wheelchair-appropriate ride to hospital and dialysis appointments by describing the trip in plain language. AI turns the description into a structured booking, a mobility assessment and a driver brief.
+> **One-liner:** Care Ride at your service-PH helps family caregivers in Metro Manila book a safe, wheelchair-appropriate ride to hospital and dialysis appointments by describing the trip in plain language. AI turns the description into a structured booking, a mobility assessment and a driver brief.
 
 This report follows the 7-step validation framework from Week 4A. Each step states the **hypothesis tested**, the **evidence found** (with sources) and a **verdict**.
 
@@ -88,7 +88,7 @@ Rehab, oncology and outpatient visits are excluded, so these numbers are a floor
 |---|---|---|---|
 | **Lifelifters Transport** (Metro Manila) | Hydraulic-lift van; the patient stays seated in the wheelchair | A 2018 review says it had a single unit; booking by phone or email; no structured needs intake | Faster booking; needs captured once; reusable driver brief |
 | **Wheelmobile** (Circle of Friends Foundation) | First PH transport service for PWDs; clear day and night rates | Phone/email booking; small fleet | Same as above |
-| **GrabAssist / GrabAssist Plus** | App booking, trained drivers; Plus uses ramp vans (Singapore) | Drivers cannot leave the vehicle to help (Grab MY policy); availability depends on the country; no stair-assist assessment | CareRide flags stair assist and crew size *before* the trip |
+| **GrabAssist / GrabAssist Plus** | App booking, trained drivers; Plus uses ramp vans (Singapore) | Drivers cannot leave the vehicle to help (Grab MY policy); availability depends on the country; no stair-assist assessment | Care Ride flags stair assist and crew size *before* the trip |
 | **Private ambulance (non-emergency use)** | Stretcher, trained staff | Expensive; overkill for stable wheelchair users | Right-sized vehicle and cost |
 | **Family car / tricycle** | Free and available | Unsafe transfers; tricycles cannot take a wheelchair user | Safety |
 | **US NEMT platforms (Kinetik, Ride Health, MedHaul)** | Digital booking and dispatch | Not in PH; built around US Medicaid billing | Localised for PH caregivers and operators |
@@ -97,7 +97,7 @@ Sources: Lifelifters — https://nananadal.ph/lifelifters-uplifting-literally-an
 
 **Feature gap matrix**
 
-| Capability | Lifelifters | Wheelmobile | GrabAssist | Ambulance | **CareRide** |
+| Capability | Lifelifters | Wheelmobile | GrabAssist | Ambulance | **Care Ride** |
 |---|:-:|:-:|:-:|:-:|:-:|
 | Online booking | ✗ | ✗ | ✓ | ✗ | ✓ |
 | Plain-language (Taglish) trip intake | ✗ | ✗ | ✗ | ✗ | ✓ |

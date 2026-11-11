@@ -1,4 +1,4 @@
-# Architecture Notes — CareRide PH
+# Architecture Notes — Care Ride at your service-PH
 
 ## 1. Stack (follows the Week 4 recommended stack)
 | Layer | Choice | Why |

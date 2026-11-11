@@ -1,4 +1,4 @@
-# CareRide PH — Product Requirements Document (v1.0, MVP)
+# Care Ride at your service-PH — Product Requirements Document (v1.0, MVP)
 
 **Owner:** Feladel "Peng" Pobre · **Status:** Approved for build (v1.1: added F6) · **Last updated:** 11 Nov 2026
 
