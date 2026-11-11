@@ -35,9 +35,32 @@ revoke all on public.bookings from anon, authenticated;
 create table if not exists public.app_events (
   id bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
-  name text not null check (name in ('trip_analyzed','booking_confirmed','emergency_redirect')),
+  name text not null check (name in ('trip_analyzed','booking_confirmed','emergency_redirect','feedback_submitted')),
   props jsonb not null default '{}'::jsonb
 );
 create index if not exists app_events_name_created_idx on public.app_events (name, created_at desc);
 alter table public.app_events enable row level security;
 revoke all on public.app_events from anon, authenticated;
+
+-- Customer feedback / complaints (RA 11967 internal redress mechanism). Verified by booking reference + mobile number.
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  booking_id uuid not null references public.bookings(id) on delete cascade,
+  rating_overall int not null check (rating_overall between 1 and 5),
+  rating_driver int check (rating_driver between 1 and 5),
+  rating_caregiver int check (rating_caregiver between 1 and 5),
+  on_time boolean,
+  issue_types text[] not null default '{}',
+  incident_at timestamptz,
+  driver_name text check (char_length(driver_name) <= 60),
+  caregiver_name text check (char_length(caregiver_name) <= 60),
+  details text check (char_length(details) <= 1000),
+  wants_callback boolean not null default false,
+  priority text not null default 'normal' check (priority in ('normal','high','urgent')),
+  status text not null default 'open' check (status in ('open','in_progress','resolved'))
+);
+create index if not exists feedback_created_idx on public.feedback (created_at desc);
+create index if not exists feedback_booking_idx on public.feedback (booking_id);
+alter table public.feedback enable row level security;
+revoke all on public.feedback from anon, authenticated;

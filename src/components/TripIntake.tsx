@@ -478,9 +478,11 @@ export default function TripIntake() {
                   <p className="text-sm">
                     Reference <strong>{booking.reference}</strong>, requested on {formatManilaDateTime(booking.requestedAt)}. Keep
                     this reference; a dispatcher will call to confirm.{" "}
-                    <Link href="/dispatch" className="font-medium underline">
-                      View dispatcher board
+                    After the trip, you can{" "}
+                    <Link href={`/feedback?ref=${booking.reference}`} className="font-bold underline">
+                      rate the service or report a problem
                     </Link>
+                    .
                   </p>
                 </div>
               ) : (

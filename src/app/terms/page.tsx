@@ -51,7 +51,8 @@ export default function TermsPage() {
       <section>
         <h2>5. Complaints and redress</h2>
         <p>
-          If something goes wrong, contact us at support@careride-at-your-service.ph (placeholder). We acknowledge complaints within 24
+          If something goes wrong, use the <a className="font-semibold underline" href="/feedback">feedback form</a> (you&apos;ll get a
+          ticket number) or contact us at support@careride-at-your-service.ph (placeholder). Safety reports are handled as urgent. We acknowledge complaints within 24
           hours and aim to resolve them within 7 days. You may also seek help from the DTI (including its online dispute resolution
           for internet transactions under RA 11967) or the LTFRB.
         </p>

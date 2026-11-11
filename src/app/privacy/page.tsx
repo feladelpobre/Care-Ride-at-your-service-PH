@@ -38,6 +38,10 @@ export default function PrivacyPage() {
             This is health information, which the law treats as <strong>sensitive personal information</strong>.
           </li>
           <li>Whether the patient is a Senior Citizen or PWD (to apply the legal 20% fare discount). We do not store ID numbers.</li>
+          <li>
+            If you send feedback: your ratings, what went wrong, when it happened, the names of the driver or caregiver, and your
+            comments. We use this only to follow up and improve the service.
+          </li>
           <li>Anonymous usage statistics (Vercel Analytics: page views and button events, no cookies).</li>
         </ul>
         <p>We do <strong>not</strong> need, and ask you not to give, names of the patient, diagnoses or medical records.</p>

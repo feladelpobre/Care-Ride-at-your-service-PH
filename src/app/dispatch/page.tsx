@@ -1,4 +1,5 @@
-import { listBookings, listEvents, maskName, maskPhone, storageMode } from "@/lib/storage";
+import { listBookings, listEvents, listFeedback, maskName, maskPhone, storageMode } from "@/lib/storage";
+import { averageRating, feedbackTicket, ISSUE_TYPES, type FeedbackRecord } from "@/lib/feedback";
 import { bookingReference, formatManilaDateTime } from "@/lib/format";
 import { computeInsights, CONVERSION_TARGET_PCT, type Insights } from "@/lib/insights";
 import type { Booking } from "@/lib/schemas";
@@ -24,6 +25,12 @@ export default async function DispatchPage() {
   } catch {
     insights = null;
   }
+  let feedback: FeedbackRecord[] | null = null;
+  try {
+    feedback = await listFeedback(50);
+  } catch {
+    feedback = null;
+  }
 
   return (
     <div className="space-y-6">
@@ -37,6 +44,8 @@ export default async function DispatchPage() {
       </div>
 
       {insights && <InsightsPanel i={insights} />}
+
+      {feedback && <FeedbackPanel items={feedback} />}
 
       {failed && (
         <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">
@@ -141,5 +150,99 @@ function Metric({ label, value, note, good }: { label: string; value: string; no
         <dd className={`mt-1 text-sm font-bold ${good === true ? "text-green-800" : good === false ? "text-amber-800" : "text-zinc-600"}`}>{note}</dd>
       )}
     </div>
+  );
+}
+
+const PRIORITY_STYLE: Record<FeedbackRecord["priority"], string> = {
+  urgent: "bg-red-100 text-red-900",
+  high: "bg-amber-100 text-amber-900",
+  normal: "bg-zinc-100 text-zinc-800",
+};
+
+function FeedbackPanel({ items }: { items: FeedbackRecord[] }) {
+  const avg = averageRating(items);
+  const open = items.filter((f) => f.status !== "resolved");
+  const order = { urgent: 0, high: 1, normal: 2 } as const;
+  const sorted = [...items].sort((a, b) => order[a.priority] - order[b.priority] || b.createdAt.localeCompare(a.createdAt));
+  return (
+    <section aria-labelledby="fb-title" className="card">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="fb-title" className="text-xl font-bold text-ube-950">
+          Customer feedback
+        </h2>
+        <p className="text-[15px] font-bold text-ube-800">
+          {avg === null ? "No ratings yet" : `Average ${avg} / 5 from ${items.length} review${items.length === 1 ? "" : "s"}`} · {open.length} open
+        </p>
+      </div>
+      {sorted.length === 0 ? (
+        <p className="mt-3 text-zinc-600">No feedback yet. Customers can rate a trip or report a problem at /feedback.</p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {sorted.slice(0, 20).map((f) => (
+            <li key={f.id} className="rounded-2xl border-2 border-ube-100 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="font-bold text-ube-950">
+                    {"★".repeat(f.ratingOverall)}
+                    <span className="text-zinc-300">{"★".repeat(5 - f.ratingOverall)}</span>
+                    <span className="ml-2">{feedbackTicket(f.id)}</span>
+                    <span className="ml-2 text-sm font-normal text-zinc-600">for {bookingReference(f.bookingId)}</span>
+                  </p>
+                  <p className="text-sm text-zinc-600">
+                    Sent {formatManilaDateTime(f.createdAt)}
+                    {f.incidentAt ? ` · Happened ${formatManilaDateTime(f.incidentAt)}` : ""}
+                  </p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${PRIORITY_STYLE[f.priority]}`}>
+                  {f.priority === "urgent" ? "Urgent" : f.priority === "high" ? "High" : "Normal"} · {f.status === "open" ? "Open" : f.status}
+                </span>
+              </div>
+              {f.issueTypes.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {f.issueTypes.map((t) => (
+                    <span key={t} className="rounded-full bg-ube-50 px-3 py-1 text-xs font-bold text-ube-900">
+                      {ISSUE_TYPES[t]}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm text-zinc-700 sm:grid-cols-2">
+                {f.driverName && (
+                  <div>
+                    <dt className="inline font-bold">Driver: </dt>
+                    <dd className="inline">
+                      {f.driverName}
+                      {f.ratingDriver ? ` (${f.ratingDriver}/5)` : ""}
+                    </dd>
+                  </div>
+                )}
+                {f.caregiverName && (
+                  <div>
+                    <dt className="inline font-bold">Caregiver: </dt>
+                    <dd className="inline">
+                      {f.caregiverName}
+                      {f.ratingCaregiver ? ` (${f.ratingCaregiver}/5)` : ""}
+                    </dd>
+                  </div>
+                )}
+                {f.onTime !== null && (
+                  <div>
+                    <dt className="inline font-bold">On time: </dt>
+                    <dd className="inline">{f.onTime ? "Yes" : "No"}</dd>
+                  </div>
+                )}
+                {f.wantsCallback && (
+                  <div>
+                    <dt className="inline font-bold">Callback: </dt>
+                    <dd className="inline">Requested</dd>
+                  </div>
+                )}
+              </dl>
+              {f.details && <p className="mt-2 whitespace-pre-line rounded-xl bg-zinc-50 p-3 text-[15px] text-zinc-800">{f.details}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

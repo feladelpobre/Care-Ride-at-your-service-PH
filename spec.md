@@ -1,6 +1,6 @@
 # spec.md — Care Ride at your service-PH
 
-**Version:** 1.6 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
+**Version:** 1.7 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
 
 ---
 
@@ -143,6 +143,7 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | AC13 | Senior/PWD ticked: 20% off the ride fare only (₱1,200 fare → −₱240; wheelchair and companion not discounted); driver checklist includes the ID check | `tests/addons.test.ts` |
 | AC14 | Wheelchair ticked: +₱150 line and "Bring a clean, checked wheelchair" first in the checklist | `tests/addons.test.ts` |
 | AC15 | Step-1 tick boxes reach `/api/plan` (companion ticked → default hours) and `/api/bookings` stores them, recomputing the discount server-side | `tests/addons.test.ts` |
+| AC19 | Feedback at `/feedback`: needs a matching booking reference + mobile number (else 404); returns an `FB-` ticket; safety → urgent, ≤2 stars or callback → high; max 3 per booking; shown on `/dispatch` with ratings, issue types, incident time, driver/caregiver names | `tests/feedback.test.ts` |
 | AC18 | Booking without a mobile number (or empty) → 400 "Please enter a mobile number…"; the 4th request from the same number within 24 h → 429; dispatcher shows the number masked (0917 *** 4567) | `tests/bookings-route.test.ts`, `tests/validation.test.ts` |
 | AC17 | Every confirmed request gets a reference (`CR-` + 8 characters) and its request date/time; both appear on the confirmation and on the dispatcher card (Manila time) | `tests/bookings-route.test.ts` |
 | AC16 | Insights: 4 plans + 2 requests → 50% conversion, "meets 40% target"; events hold no personal data; no data → "–" | `tests/insights.test.ts` |
@@ -182,6 +183,7 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | 1.1 | Replaced "exact address" with "pickup area"; masked names on the board | Review: Data Privacy Act data-minimisation |
 | 1.2 | Replaced the flat fare with **distance-band pricing** plus an itemised quote; added the nearest-hospital estimate | Stakeholder review (founder): customers want to know the cost from their location to the (nearest) hospital |
 | 1.2 | Added the optional **hospital companion** service (hourly, until the appointment is completed) | Stakeholder review: a second revenue line, and caregivers often cannot stay at the hospital |
+| 1.7 | **Feedback system**: ratings (overall, driver, caregiver), on-time, issue types, incident date/time, driver/caregiver names, details, callback; urgent triage; dispatcher panel with average rating | Stakeholder review: customers need a way to rate service and report problems (also RA 11967 redress) |
 | 1.6 | Mobile number made **required**; max 3 requests per number per 24 h; masked number on the dispatcher board | Stakeholder review: prevent fraudulent/fake requests and allow a confirmation call |
 | 1.5 | Request date/time and `CR-` reference shown on confirmation and dispatcher cards | Stakeholder review: applications must be traceable by date |
 | 1.4 | Funnel events stored in Supabase and shown in a dispatcher **Insights** panel | Vercel custom events are not available on the free Hobby plan |

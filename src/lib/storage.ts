@@ -3,11 +3,13 @@ import { unstable_noStore as noStore } from "next/cache";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Booking } from "./schemas";
 import type { EventName, EventProps } from "./insights";
+import { referenceToIdRange, type FeedbackRecord, type FeedbackRequest } from "./feedback";
 
 export type NewBooking = Omit<Booking, "id" | "createdAt" | "status">;
 
 let client: SupabaseClient | null = null;
 const memory: Booking[] = [];
+const memoryFeedback: FeedbackRecord[] = [];
 const memoryEvents: { name: EventName; props: EventProps; createdAt: number }[] = [];
 
 export function storageMode(): "supabase" | "memory" {
@@ -180,4 +182,123 @@ export async function listEvents(days = 30): Promise<{ name: EventName; props: E
     .limit(10000);
   if (error) throw new Error(`events list failed: ${error.code ?? "unknown"}`);
   return data as { name: EventName; props: EventProps }[];
+}
+
+/** Finds a booking by its CR- reference AND the mobile number used (both must match). */
+export async function findBookingForFeedback(reference: string, phone: string): Promise<Booking | null> {
+  noStore();
+  const { from, to } = referenceToIdRange(reference);
+  if (storageMode() === "memory") {
+    return memory.find((b) => b.id >= from && b.id <= to && b.contactPhone === phone) ?? null;
+  }
+  const { data, error } = await db()
+    .from("bookings")
+    .select("*")
+    .gte("id", from)
+    .lte("id", to)
+    .eq("contact_phone", phone)
+    .limit(1);
+  if (error) throw new Error(`storage lookup failed: ${error.code ?? "unknown"}`);
+  return data && data.length ? fromRow(data[0] as Row) : null;
+}
+
+export async function countFeedbackForBooking(bookingId: string): Promise<number> {
+  noStore();
+  if (storageMode() === "memory") return memoryFeedback.filter((f) => f.bookingId === bookingId).length;
+  const { count, error } = await db().from("feedback").select("id", { count: "exact", head: true }).eq("booking_id", bookingId);
+  if (error) throw new Error(`storage count failed: ${error.code ?? "unknown"}`);
+  return count ?? 0;
+}
+
+type FeedbackRow = {
+  id: string;
+  created_at: string;
+  booking_id: string;
+  rating_overall: number;
+  rating_driver: number | null;
+  rating_caregiver: number | null;
+  on_time: boolean | null;
+  issue_types: FeedbackRecord["issueTypes"];
+  incident_at: string | null;
+  driver_name: string | null;
+  caregiver_name: string | null;
+  details: string | null;
+  wants_callback: boolean;
+  priority: FeedbackRecord["priority"];
+  status: string;
+};
+
+const fromFeedbackRow = (r: FeedbackRow): FeedbackRecord => ({
+  id: r.id,
+  createdAt: r.created_at,
+  bookingId: r.booking_id,
+  ratingOverall: r.rating_overall,
+  ratingDriver: r.rating_driver,
+  ratingCaregiver: r.rating_caregiver,
+  onTime: r.on_time,
+  issueTypes: r.issue_types ?? [],
+  incidentAt: r.incident_at,
+  driverName: r.driver_name,
+  caregiverName: r.caregiver_name,
+  details: r.details,
+  wantsCallback: r.wants_callback,
+  priority: r.priority,
+  status: r.status,
+});
+
+export async function saveFeedback(
+  bookingId: string,
+  f: Omit<FeedbackRequest, "reference" | "contactPhone">,
+  priority: FeedbackRecord["priority"],
+): Promise<FeedbackRecord> {
+  const incidentAt = f.incidentAt ? new Date(f.incidentAt).toISOString() : null;
+  if (storageMode() === "memory") {
+    const rec: FeedbackRecord = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      bookingId,
+      ratingOverall: f.ratingOverall,
+      ratingDriver: f.ratingDriver,
+      ratingCaregiver: f.ratingCaregiver,
+      onTime: f.onTime,
+      issueTypes: f.issueTypes,
+      incidentAt,
+      driverName: f.driverName,
+      caregiverName: f.caregiverName,
+      details: f.details,
+      wantsCallback: f.wantsCallback,
+      priority,
+      status: "open",
+    };
+    memoryFeedback.unshift(rec);
+    return rec;
+  }
+  const { data, error } = await db()
+    .from("feedback")
+    .insert({
+      booking_id: bookingId,
+      rating_overall: f.ratingOverall,
+      rating_driver: f.ratingDriver,
+      rating_caregiver: f.ratingCaregiver,
+      on_time: f.onTime,
+      issue_types: f.issueTypes,
+      incident_at: incidentAt,
+      driver_name: f.driverName,
+      caregiver_name: f.caregiverName,
+      details: f.details,
+      wants_callback: f.wantsCallback,
+      priority,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(`feedback insert failed: ${error.code ?? "unknown"}`);
+  return fromFeedbackRow(data as FeedbackRow);
+}
+
+export async function listFeedback(limit = 50): Promise<FeedbackRecord[]> {
+  noStore();
+  if (storageMode() === "memory") return memoryFeedback.slice(0, limit);
+  const { data, error } = await db().from("feedback").select("*").order("created_at", { ascending: false }).limit(limit);
+  if (error) throw new Error(`feedback list failed: ${error.code ?? "unknown"}`);
+  return (data as FeedbackRow[]).map(fromFeedbackRow);
 }

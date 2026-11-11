@@ -37,6 +37,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Link href="/" className="hidden rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50 sm:inline-block">
                 Book a ride
               </Link>
+              <Link href="/feedback" className="rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50">
+                Feedback
+              </Link>
               <Link href="/dispatch" className="rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50">
                 Dispatcher
               </Link>
@@ -54,6 +57,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               </Link>
               <Link href="/terms" className="text-ube-800 underline underline-offset-2">
                 Terms of Service
+              </Link>
+              <Link href="/feedback" className="text-ube-800 underline underline-offset-2">
+                Give feedback or report a problem
               </Link>
             </nav>
             <p className="max-w-3xl">

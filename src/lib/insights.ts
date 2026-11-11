@@ -1,5 +1,5 @@
 /** Funnel metrics for the dispatcher Insights panel (PRD §5 success metrics). Pure and unit-tested. */
-export type EventName = "trip_analyzed" | "booking_confirmed" | "emergency_redirect";
+export type EventName = "trip_analyzed" | "booking_confirmed" | "emergency_redirect" | "feedback_submitted";
 export type EventProps = Record<string, string | number | boolean>;
 
 export type Insights = {
