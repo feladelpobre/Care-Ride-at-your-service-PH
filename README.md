@@ -25,7 +25,7 @@ In a 2024 PGH study of 413 wheelchair users, **82.3% named accessibility as thei
 | ☑️ | **Tick boxes up front:** Wheelchair (₱150) · Hospital companion/caregiver · Senior Citizen/PWD 20% fare discount (RA 9994 / RA 10754) |
 | ⚖️ | **Compliance built in:** Privacy Notice (Data Privacy Act), Terms with complaints/redress (Internet Transactions Act), non-emergency PTV positioning (DOH AO 2018-0001). See the [compliance plan](docs/03-regulatory-compliance.md) |
 | 🚨 | **Safety guardrails:** an emergency red-flag check runs *before* the AI and shows "Call 911"; stretcher cases are blocked; the server recomputes all prices |
-| 📋 | **Dispatcher board:** confirmed requests with driver briefs; names masked for privacy |
+| 📋 | **Dispatcher board:** every request shows its reference (e.g. CR-4D718C0B) and the date and time it was requested, with the driver brief; names masked for privacy |
 
 ## Tech stack
 Next.js 14 (App Router) · TypeScript · Tailwind CSS · Vercel AI SDK + OpenAI `gpt-4o-mini` · zod · Supabase (Postgres + RLS) · Vitest · GitHub Actions · Vercel + Vercel Analytics
@@ -77,12 +77,12 @@ Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor, the
 
 ## Tests & CI
 ```bash
-npm test          # 64 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
+npm test          # 66 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
 npm run lint && npm run typecheck && npm run build
 ```
 GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and PR: **gitleaks secret scan → lint → typecheck → tests → build**. Vercel deploys previews for PRs and production from `main`.
 
-Each acceptance criterion in `spec.md` (AC1–AC16) maps to a test file.
+Each acceptance criterion in `spec.md` (AC1–AC17) maps to a test file.
 
 ## Monitoring
 - **Vercel Web Analytics:** visitors, page views, pages, countries, devices

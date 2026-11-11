@@ -7,6 +7,7 @@ import { track } from "@vercel/analytics";
 import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
+import { formatManilaDateTime } from "@/lib/format";
 import {
   BASE_FARE,
   COMPANION_MIN_HOURS,
@@ -54,7 +55,7 @@ export default function TripIntake() {
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [consent, setConsent] = useState(false);
-  const [booking, setBooking] = useState<{ id: string } | null>(null);
+  const [booking, setBooking] = useState<{ id: string; reference: string; requestedAt: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Re-price instantly with the same pure rules the server uses
@@ -475,7 +476,8 @@ export default function TripIntake() {
                 <div role="status" className="rounded-lg border border-ube-300 bg-ube-50 p-4 text-ube-900">
                   <p className="font-semibold">Booking request sent ✓</p>
                   <p className="text-sm">
-                    Reference <code>{booking.id.slice(0, 8)}</code>. A dispatcher will call to confirm.{" "}
+                    Reference <strong>{booking.reference}</strong>, requested on {formatManilaDateTime(booking.requestedAt)}. Keep
+                    this reference; a dispatcher will call to confirm.{" "}
                     <Link href="/dispatch" className="font-medium underline">
                       View dispatcher board
                     </Link>

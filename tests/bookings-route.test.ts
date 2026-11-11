@@ -44,3 +44,18 @@ describe("POST /api/bookings", () => {
     expect(maskName("liza  santos")).toBe("L*** S***");
   });
 });
+
+import { bookingReference, formatManilaDateTime } from "@/lib/format";
+describe("traceable request date and reference (AC17)", () => {
+  it("returns a CR- reference and the request timestamp", async () => {
+    const before = Date.now();
+    const res = await call({ contactName: "Liza", plan: makePlan() });
+    const { booking } = await res.json();
+    expect(booking.reference).toMatch(/^CR-[0-9A-F]{8}$/);
+    expect(Date.parse(booking.requestedAt)).toBeGreaterThanOrEqual(before - 1000);
+  });
+  it("formats references and Manila times consistently", () => {
+    expect(bookingReference("4d718c0b-1cbe-478a-8ea2-82fbb6852ca3")).toBe("CR-4D718C0B");
+    expect(formatManilaDateTime("2026-11-11T14:44:00Z")).toBe("Nov 11, 2026, 10:44 PM");
+  });
+});

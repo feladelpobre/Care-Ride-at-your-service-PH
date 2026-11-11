@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { bookingRequestSchema } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
 import { recordEvent, saveBooking } from "@/lib/storage";
+import { bookingReference } from "@/lib/format";
 
 export const runtime = "nodejs";
 
@@ -63,7 +64,18 @@ export async function POST(req: Request) {
       wheelchair: fresh.options.wheelchairRental,
       seniorPwd: fresh.options.seniorPwdDiscount,
     });
-    return NextResponse.json({ booking: { id: booking.id, status: booking.status, assessment } }, { status: 201 });
+    return NextResponse.json(
+      {
+        booking: {
+          id: booking.id,
+          reference: bookingReference(booking.id),
+          requestedAt: booking.createdAt,
+          status: booking.status,
+          assessment,
+        },
+      },
+      { status: 201 },
+    );
   } catch (err) {
     console.error("bookings: save failed", err instanceof Error ? err.message : "unknown");
     return NextResponse.json({ error: "Could not save the booking. Please try again." }, { status: 503 });

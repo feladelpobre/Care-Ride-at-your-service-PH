@@ -1,4 +1,5 @@
 import { listBookings, listEvents, maskName, storageMode } from "@/lib/storage";
+import { bookingReference, formatManilaDateTime } from "@/lib/format";
 import { computeInsights, CONVERSION_TARGET_PCT, type Insights } from "@/lib/insights";
 import type { Booking } from "@/lib/schemas";
 
@@ -29,7 +30,8 @@ export default async function DispatchPage() {
       <div>
         <h1 className="text-2xl font-bold text-ube-950">Dispatcher board</h1>
         <p className="text-sm text-zinc-600">
-          Latest 50 ride requests. Contact names are masked for privacy.
+          Latest 50 ride requests, newest first. Each shows its reference and the date and time it was requested (Manila time).
+          Contact names are masked for privacy.
           {storageMode() === "memory" && " Demo storage: requests reset when the server restarts."}
         </p>
       </div>
@@ -53,11 +55,19 @@ export default async function DispatchPage() {
                   {b.pickupTime ?? "TBC"} pickup · {b.destination ?? "Destination TBC"}
                 </p>
                 <p className="text-sm text-zinc-600">
-                  {b.appointmentDate ?? "Date TBC"} · from {b.pickupArea ?? "area TBC"} · {b.distanceKm} km · contact{" "}
+                  Appointment {b.appointmentDate ?? "date TBC"} · from {b.pickupArea ?? "area TBC"} · {b.distanceKm} km · contact{" "}
                   {maskName(b.contactName)}
                 </p>
               </div>
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase text-amber-900">{b.status}</span>
+              <div className="text-right">
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">
+                  {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                </span>
+                <p className="mt-2 text-sm font-bold text-ube-900">{bookingReference(b.id)}</p>
+                <p className="text-sm text-zinc-600">
+                  Requested <time dateTime={b.createdAt}>{formatManilaDateTime(b.createdAt)}</time>
+                </p>
+              </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
               <span className="rounded-full bg-ube-100 px-3 py-1 font-medium text-ube-900">
