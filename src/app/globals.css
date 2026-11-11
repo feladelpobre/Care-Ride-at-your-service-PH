@@ -2,29 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  font-size: 17px; /* slightly larger base for senior and caregiver readability */
+}
+
 body {
-  color: #1c2b2a;
-  background: #f6f4ef;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  @apply bg-page font-sans text-ube-950 antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid #e9a31f;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-stone-200 bg-white p-5 shadow-sm;
+    @apply rounded-3xl border border-ube-100 bg-white p-5 sm:p-7;
   }
   .label {
-    @apply mb-1 block text-sm font-medium text-stone-700;
+    @apply mb-1.5 block text-[15px] font-bold text-ube-950;
   }
   .input {
-    @apply min-h-11 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-base text-stone-900 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/30;
+    @apply min-h-12 w-full rounded-xl border-2 border-zinc-200 bg-white px-3.5 py-2.5 text-base text-ube-950 placeholder:text-zinc-400 focus:border-ube-600 focus:outline-none focus:ring-4 focus:ring-ube-100;
   }
   .btn-primary {
-    @apply inline-flex min-h-11 items-center justify-center rounded-lg bg-teal-800 px-5 py-2 font-semibold text-white transition hover:bg-teal-900 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-700/40 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-ube-700 px-7 py-2.5 text-[17px] font-bold text-white transition-colors hover:bg-ube-800 disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-600;
   }
   .btn-ghost {
-    @apply inline-flex min-h-11 items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-800 hover:bg-stone-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-700/30;
+    @apply inline-flex min-h-11 items-center justify-center rounded-full border-2 border-ube-200 bg-white px-4 py-2 text-sm font-bold text-ube-800 hover:border-ube-400 hover:bg-ube-50;
   }
-  .section-title {
-    @apply mb-3 text-xs font-semibold uppercase tracking-wider text-stone-500;
+  .step-title {
+    @apply flex items-center gap-3 text-xl font-bold text-ube-950;
+  }
+  .step-num {
+    @apply grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ube-700 text-base font-bold text-white;
   }
 }

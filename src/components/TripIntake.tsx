@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Accessibility, BadgePercent, HeartHandshake } from "lucide-react";
 import { track } from "@vercel/analytics";
 import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
@@ -139,8 +140,9 @@ export default function TripIntake() {
     <div className="space-y-6">
       {/* Step 1: describe */}
       <form onSubmit={analyse} className="card space-y-3">
-        <label htmlFor="desc" className="label text-base">
-          1. Describe the trip
+        <label htmlFor="desc" className="step-title">
+          <span className="step-num" aria-hidden>1</span>
+          Tell us about the trip
         </label>
         <textarea
           id="desc"
@@ -152,7 +154,7 @@ export default function TripIntake() {
           placeholder="e.g., Mama uses a wheelchair, dialysis at St. Luke's BGC Tuesday 9am, we're in Pasig, 3rd floor, no elevator…"
           aria-describedby="desc-help"
         />
-        <div id="desc-help" className="flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500">
+        <div id="desc-help" className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
           <span>Include: where from, which hospital, date and time, how the patient moves, stairs, equipment.</span>
           <span>{description.length}/1500</span>
         </div>
@@ -163,12 +165,13 @@ export default function TripIntake() {
             </button>
           ))}
         </div>
-        <fieldset className="rounded-xl border border-teal-200 bg-teal-50/60 p-4">
-          <legend className="px-1 text-sm font-semibold text-teal-900">What would you like to avail? (tick all that apply)</legend>
+        <fieldset className="pt-2">
+          <legend className="mb-2 text-base font-bold text-ube-950">What would you like to avail? Tick all that apply.</legend>
           <div className="space-y-2">
             <Tick
               checked={wantWheelchair}
               onChange={setWantWheelchair}
+              icon={<Accessibility aria-hidden size={24} />}
               title="Wheelchair"
               detail={`We bring a clean wheelchair for the patient to use during the trip and inside the hospital. ${peso(WHEELCHAIR_RENTAL_FEE)} per trip.`}
             />
@@ -178,12 +181,14 @@ export default function TripIntake() {
                 setWantCompanion(v);
                 if (extraction) setCompanionHours(v ? DEFAULT_COMPANION_HOURS[extraction.tripPurpose] : 0);
               }}
+              icon={<HeartHandshake aria-hidden size={24} />}
               title="Hospital companion / caregiver"
               detail={`A trained caregiver stays with the patient inside the hospital (registration, waiting, transfers) until the appointment is done. ${peso(COMPANION_RATE_PER_HOUR)}/hour, minimum ${COMPANION_MIN_HOURS} hours.`}
             />
             <Tick
               checked={seniorPwd}
               onChange={setSeniorPwd}
+              icon={<BadgePercent aria-hidden size={24} />}
               title="Patient is a Senior Citizen (60+) or a person with disability (PWD)"
               detail="20% discount on the ride fare, as required by law (RA 9994 and RA 10754). Please show the OSCA or PWD ID to the driver; we don't store the ID number."
             />
@@ -215,10 +220,11 @@ export default function TripIntake() {
           {/* Step 2: review */}
           <section className="card space-y-5" aria-labelledby="review-title">
             <div>
-              <h2 id="review-title" className="text-lg font-semibold text-stone-900">
-                2. Review your ride plan
+              <h2 id="review-title" className="step-title">
+                <span className="step-num" aria-hidden>2</span>
+                Check your ride plan
               </h2>
-              <p className="mt-1 text-sm text-stone-600">{extraction.caregiverSummary}</p>
+              <p className="mt-1 text-sm text-zinc-600">{extraction.caregiverSummary}</p>
             </div>
 
             {extraction.missingInfo.length > 0 && (
@@ -278,8 +284,8 @@ export default function TripIntake() {
             )}
 
             {!plan.assessment.blocked && plan.assessment.pickupTime && (
-              <details className="text-sm text-stone-600">
-                <summary className="cursor-pointer font-medium text-teal-800">How we calculated the pickup time</summary>
+              <details className="text-sm text-zinc-600">
+                <summary className="cursor-pointer font-medium text-ube-800">How we calculated the pickup time</summary>
                 <ul className="mt-2 list-inside list-disc">
                   {plan.assessment.pickupBreakdown.map((b) => (
                     <li key={b}>{b}</li>
@@ -292,8 +298,9 @@ export default function TripIntake() {
           {/* Step 3: price */}
           {!plan.assessment.blocked && (
             <section className="card space-y-5" aria-labelledby="price-title">
-              <h2 id="price-title" className="text-lg font-semibold text-stone-900">
-                3. Price estimate (one way)
+              <h2 id="price-title" className="step-title">
+                <span className="step-num" aria-hidden>3</span>
+                Price estimate (one way)
               </h2>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -311,7 +318,7 @@ export default function TripIntake() {
                     value={plan.options.distanceKm}
                     onChange={(e) => setDistanceKm(Math.max(0.5, Math.min(150, Number(e.target.value) || 0.5)))}
                   />
-                  <p className="mt-1 text-xs text-stone-500">
+                  <p className="mt-1 text-xs text-zinc-500">
                     {plan.options.distanceSource === "caregiver" ? "Your distance." : aiPlan?.route.note} Approximate; adjust if
                     you know the route.
                   </p>
@@ -324,7 +331,7 @@ export default function TripIntake() {
                         <li key={h.name}>
                           <button
                             type="button"
-                            className="text-left text-teal-800 underline-offset-2 hover:underline"
+                            className="text-left text-ube-800 underline-offset-2 hover:underline"
                             onClick={() => {
                               update({ destination: h.name });
                               setDistanceKm(h.km);
@@ -336,24 +343,24 @@ export default function TripIntake() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-stone-500">Add your city (e.g., Pasig, QC) to see the nearest hospitals.</p>
+                    <p className="text-sm text-zinc-500">Add your city (e.g., Pasig, QC) to see the nearest hospitals.</p>
                   )}
                 </div>
               </div>
 
-              <fieldset className="rounded-xl border border-teal-200 bg-teal-50/60 p-4">
-                <legend className="px-1 text-sm font-semibold text-teal-900">Hospital companion / caregiver</legend>
+              <fieldset className="rounded-2xl border-2 border-ube-200 bg-ube-50 p-4">
+                <legend className="px-1 text-base font-bold text-ube-950">Hospital companion / caregiver</legend>
                 <label className="flex min-h-11 cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"
-                    className="mt-1 h-5 w-5 accent-teal-800"
+                    className="mt-1 h-5 w-5 accent-ube-800"
                     checked={companionHours > 0}
                     onChange={(e) => {
                       setWantCompanion(e.target.checked);
                       setCompanionHours(e.target.checked ? DEFAULT_COMPANION_HOURS[extraction.tripPurpose] : 0);
                     }}
                   />
-                  <span className="text-sm text-stone-700">
+                  <span className="text-sm text-zinc-700">
                     A trained companion stays with the patient <strong>inside the hospital</strong> (registration, waiting,
                     wheelchair transfers) until the appointment is done. {peso(COMPANION_RATE_PER_HOUR)}/hour, minimum{" "}
                     {COMPANION_MIN_HOURS} hours.
@@ -361,7 +368,7 @@ export default function TripIntake() {
                 </label>
                 {companionHours > 0 && (
                   <div className="mt-3 flex items-center gap-3">
-                    <label htmlFor="hours" className="text-sm font-medium text-stone-700">
+                    <label htmlFor="hours" className="text-sm font-medium text-zinc-700">
                       Hours
                     </label>
                     <input
@@ -373,7 +380,7 @@ export default function TripIntake() {
                       value={companionHours}
                       onChange={(e) => setCompanionHours(Math.max(COMPANION_MIN_HOURS, Math.min(12, Math.round(Number(e.target.value) || 0))))}
                     />
-                    <span className="text-xs text-stone-500">Suggested for {extraction.tripPurpose}: {DEFAULT_COMPANION_HOURS[extraction.tripPurpose]} h</span>
+                    <span className="text-xs text-zinc-500">Suggested for {extraction.tripPurpose}: {DEFAULT_COMPANION_HOURS[extraction.tripPurpose]} h</span>
                   </div>
                 )}
               </fieldset>
@@ -382,12 +389,14 @@ export default function TripIntake() {
                 <Tick
                   checked={wantWheelchair}
                   onChange={setWantWheelchair}
+                  icon={<Accessibility aria-hidden size={22} />}
                   title="Wheelchair"
                   detail={`We bring one for the trip · ${peso(WHEELCHAIR_RENTAL_FEE)}`}
                 />
                 <Tick
                   checked={seniorPwd}
                   onChange={setSeniorPwd}
+                  icon={<BadgePercent aria-hidden size={22} />}
                   title="Senior Citizen / PWD"
                   detail="20% off the ride fare · show ID to driver"
                 />
@@ -396,17 +405,17 @@ export default function TripIntake() {
               <table className="w-full text-sm">
                 <tbody>
                   {plan.assessment.quote.lines.map((l) => (
-                    <tr key={l.label} className="border-b border-stone-100">
-                      <td className="py-2 text-stone-700">{l.label}</td>
+                    <tr key={l.label} className="border-b border-zinc-100">
+                      <td className="py-2 text-zinc-700">{l.label}</td>
                       <td className="py-2 text-right tabular-nums">{peso(l.amount)}</td>
                     </tr>
                   ))}
                   <tr>
                     <td className="pt-3 font-semibold">Estimated total</td>
-                    <td className="pt-3 text-right text-lg font-bold tabular-nums text-teal-900">{peso(plan.assessment.quote.total)}</td>
+                    <td className="pt-3 text-right text-lg font-bold tabular-nums text-ube-900">{peso(plan.assessment.quote.total)}</td>
                   </tr>
                   <tr>
-                    <td colSpan={2} className="pt-1 text-right text-xs text-stone-500">
+                    <td colSpan={2} className="pt-1 text-right text-xs text-zinc-500">
                       Likely range {peso(plan.assessment.quote.min)} – {peso(plan.assessment.quote.max)} depending on traffic. No payment is
                       taken here.
                     </td>
@@ -415,9 +424,9 @@ export default function TripIntake() {
               </table>
 
               <details className="text-sm">
-                <summary className="cursor-pointer font-medium text-teal-800">See our distance rates</summary>
+                <summary className="cursor-pointer font-medium text-ube-800">See our distance rates</summary>
                 <table className="mt-2 w-full text-left text-xs">
-                  <thead className="text-stone-500">
+                  <thead className="text-zinc-500">
                     <tr>
                       <th className="py-1">Distance</th>
                       <th>Assist sedan</th>
@@ -444,7 +453,7 @@ export default function TripIntake() {
                     </tr>
                   </tbody>
                 </table>
-                <p className="mt-1 text-xs text-stone-500">Second crew +₱300 · Stair assist +₱100 per floor · Hospital companion ₱250/h (min 2 h)</p>
+                <p className="mt-1 text-xs text-zinc-500">Second crew +₱300 · Stair assist +₱100 per floor · Hospital companion ₱250/h (min 2 h)</p>
               </details>
             </section>
           )}
@@ -452,17 +461,18 @@ export default function TripIntake() {
           {/* Step 4: driver brief + confirm */}
           {!plan.assessment.blocked && (
             <section className="card space-y-4" aria-labelledby="confirm-title">
-              <h2 id="confirm-title" className="text-lg font-semibold text-stone-900">
-                4. Driver brief &amp; confirm
+              <h2 id="confirm-title" className="step-title">
+                <span className="step-num" aria-hidden>4</span>
+                Driver brief and request
               </h2>
-              <ul className="space-y-1 rounded-lg bg-stone-50 p-4 font-mono text-sm text-stone-800">
+              <ul className="space-y-1 rounded-lg bg-zinc-50 p-4 font-mono text-sm text-zinc-800">
                 {plan.driverBrief.map((line) => (
                   <li key={line}>{line}</li>
                 ))}
               </ul>
 
               {booking ? (
-                <div role="status" className="rounded-lg border border-teal-300 bg-teal-50 p-4 text-teal-900">
+                <div role="status" className="rounded-lg border border-ube-300 bg-ube-50 p-4 text-ube-900">
                   <p className="font-semibold">Booking request sent ✓</p>
                   <p className="text-sm">
                     Reference <code>{booking.id.slice(0, 8)}</code>. A dispatcher will call to confirm.{" "}
@@ -485,16 +495,16 @@ export default function TripIntake() {
                     </label>
                     <input id="cphone" className="input" inputMode="tel" placeholder="09171234567" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
                   </div>
-                  <label className="flex items-start gap-3 text-sm text-stone-700 sm:col-span-2">
-                    <input type="checkbox" className="mt-1 h-5 w-5 accent-teal-800" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
+                  <label className="flex items-start gap-3 text-sm text-zinc-700 sm:col-span-2">
+                    <input type="checkbox" className="mt-1 h-5 w-5 accent-ube-800" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
                     <span>
                       I consent to Care Ride processing these trip details, including the patient&apos;s mobility needs (health
                       information), only to arrange and carry out this ride, as described in the{" "}
-                      <Link href="/privacy" className="font-medium text-teal-800 underline">
+                      <Link href="/privacy" className="font-medium text-ube-800 underline">
                         Privacy Notice
                       </Link>
                       . I agree to the{" "}
-                      <Link href="/terms" className="font-medium text-teal-800 underline">
+                      <Link href="/terms" className="font-medium text-ube-800 underline">
                         Terms of Service
                       </Link>
                       . I didn&apos;t include diagnoses or other medical details that aren&apos;t needed.
@@ -513,17 +523,26 @@ export default function TripIntake() {
   );
 }
 
-function Tick(props: { checked: boolean; onChange: (v: boolean) => void; title: string; detail: string }) {
+function Tick(props: { checked: boolean; onChange: (v: boolean) => void; title: string; detail: string; icon?: React.ReactNode }) {
   return (
-    <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg p-1 hover:bg-white/70">
+    <label
+      className={`flex min-h-12 cursor-pointer items-start gap-3 rounded-2xl border-2 p-3.5 transition-colors ${
+        props.checked ? "border-ube-600 bg-ube-50" : "border-zinc-200 bg-white hover:border-ube-300"
+      }`}
+    >
       <input
         type="checkbox"
-        className="mt-1 h-5 w-5 shrink-0 accent-teal-800"
+        className="mt-1 h-6 w-6 shrink-0 accent-ube-700"
         checked={props.checked}
         onChange={(e) => props.onChange(e.target.checked)}
       />
-      <span className="text-sm text-stone-700">
-        <span className="block font-semibold text-stone-900">{props.title}</span>
+      {props.icon && (
+        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${props.checked ? "bg-ube-700 text-white" : "bg-ube-50 text-ube-700"}`}>
+          {props.icon}
+        </span>
+      )}
+      <span className="text-[15px] leading-snug text-zinc-700">
+        <span className="mb-0.5 block text-base font-bold text-ube-950">{props.title}</span>
         {props.detail}
       </span>
     </label>
@@ -544,10 +563,10 @@ function Field(props: { label: string; value: string | null; onChange: (v: strin
 
 function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div className="rounded-xl bg-teal-50 p-4">
-      <div className="section-title !mb-1 text-teal-800">{label}</div>
-      <div className="text-xl font-bold text-teal-950">{value}</div>
-      <div className="mt-1 text-xs text-stone-600">{sub}</div>
+    <div className="rounded-xl bg-ube-50 p-4">
+      <div className="mb-1 text-sm font-bold text-ube-700">{label}</div>
+      <div className="text-xl font-bold text-ube-950">{value}</div>
+      <div className="mt-1 text-xs text-zinc-600">{sub}</div>
     </div>
   );
 }

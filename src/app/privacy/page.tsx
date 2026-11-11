@@ -2,10 +2,10 @@ export const metadata = { title: "Privacy Notice · Care Ride at your service-PH
 
 export default function PrivacyPage() {
   return (
-    <article className="card space-y-5 text-stone-800 [&_h2]:mt-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-teal-950 [&_li]:ml-5 [&_li]:list-disc">
+    <article className="card space-y-5 text-zinc-800 [&_h2]:mt-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-ube-950 [&_li]:ml-5 [&_li]:list-disc">
       <header>
-        <h1 className="text-2xl font-bold text-teal-950">Privacy Notice</h1>
-        <p className="text-sm text-stone-500">
+        <h1 className="text-2xl font-bold text-ube-950">Privacy Notice</h1>
+        <p className="text-sm text-zinc-500">
           Based on the Data Privacy Act of 2012 (RA 10173) and its Implementing Rules. Last updated 11 November 2026.
         </p>
       </header>

@@ -2,10 +2,10 @@ export const metadata = { title: "Terms of Service · Care Ride at your service-
 
 export default function TermsPage() {
   return (
-    <article className="card space-y-5 text-stone-800 [&_h2]:mt-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-teal-950 [&_li]:ml-5 [&_li]:list-disc">
+    <article className="card space-y-5 text-zinc-800 [&_h2]:mt-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-ube-950 [&_li]:ml-5 [&_li]:list-disc">
       <header>
-        <h1 className="text-2xl font-bold text-teal-950">Terms of Service</h1>
-        <p className="text-sm text-stone-500">Last updated 11 November 2026.</p>
+        <h1 className="text-2xl font-bold text-ube-950">Terms of Service</h1>
+        <p className="text-sm text-zinc-500">Last updated 11 November 2026.</p>
       </header>
 
       <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
