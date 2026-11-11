@@ -68,7 +68,7 @@ export function estimateFare(args: {
   const stairs = args.crewSize === 2 ? 100 * args.floorsWithoutElevator : 0;
   const mid = base + crew + stairs;
   const round10 = (n: number) => Math.round(n / 10) * 10;
-  return { min: round10(mid * 0.85), max: round10(mid * 1.15) };
+  return { min: round10((mid * 85) / 100), max: round10((mid * 115) / 100) };
 }
 
 export function buildChecklist(x: TripExtraction, vehicle: Assessment["vehicle"], crew: 1 | 2): string[] {
