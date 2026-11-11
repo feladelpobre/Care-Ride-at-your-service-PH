@@ -61,7 +61,8 @@ Without the Supabase variables, bookings are kept in memory (demo mode).
 ### Environment variables
 | Name | Required | Where it is used |
 |---|---|---|
-| `OPENAI_API_KEY` | ✅ | Server only (`src/lib/ai.ts`) |
+| `OPENAI_API_KEY` | ✅ | Server only (`src/lib/ai.ts`). An OpenAI key, or an OpenRouter key (`sk-or-…`), which is routed through OpenRouter automatically |
+| `OPENAI_BASE_URL` | optional | Override the OpenAI-compatible endpoint |
 | `OPENAI_MODEL` | optional (default `gpt-4o-mini`) | Server only |
 | `SUPABASE_URL` | optional | Server only (`src/lib/storage.ts`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | optional | Server only; RLS blocks all public access |
@@ -73,7 +74,7 @@ Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor, the
 
 ## Tests & CI
 ```bash
-npm test          # 52 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
+npm test          # 55 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
 npm run lint && npm run typecheck && npm run build
 ```
 GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and PR: **gitleaks secret scan → lint → typecheck → tests → build**. Vercel deploys previews for PRs and production from `main`.

@@ -108,7 +108,7 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 ---
 
 ## 4. AI Module Design
-- **Library:** Vercel AI SDK `generateObject()` with `@ai-sdk/openai`; model from `OPENAI_MODEL` (default `gpt-4o-mini`), `temperature: 0`. Timeout 20 s via `AbortSignal`, `maxRetries: 1`.
+- **Library:** Vercel AI SDK `generateObject()` with `@ai-sdk/openai`; model from `OPENAI_MODEL` (default `gpt-4o-mini`). The provider is OpenAI directly, or OpenRouter when the key starts with `sk-or-` (same OpenAI model, `openai/gpt-4o-mini`), `temperature: 0`. Timeout 20 s via `AbortSignal`, `maxRetries: 1`.
 - **Schema enforcement:** the zod schema is passed to `generateObject`, so the provider returns schema-conformant JSON. The result is then **normalised** (clamping, date/time format checks, de-duplication) by `normalizeExtraction()`.
 - **System prompt (summary)**, kept in `src/lib/prompt.ts`:
   1. Role: intake assistant for non-emergency accessible transport in Metro Manila.
