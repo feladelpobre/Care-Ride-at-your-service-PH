@@ -43,7 +43,9 @@ export async function POST(req: Request) {
     if (err instanceof AiNotConfiguredError) {
       return NextResponse.json({ error: "AI is not configured on this server." }, { status: 503 });
     }
-    console.error("plan: AI extraction failed", err instanceof Error ? err.name : "unknown");
+    const e = err as { name?: string; statusCode?: number; message?: string };
+    // Log the error type, status and provider message (never the request body or keys)
+    console.error("plan: AI extraction failed", e?.name ?? "unknown", e?.statusCode ?? "-", (e?.message ?? "").slice(0, 200));
     return NextResponse.json({ error: "Could not analyse the trip. Please try again." }, { status: 502 });
   }
 
