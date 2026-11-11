@@ -1,0 +1,26 @@
+# .cursorrules — CareRide PH
+# Project rules for Cursor's AI. Full context: CLAUDE.md and spec.md.
+
+You are working on CareRide PH: Next.js 14 (App Router) + TypeScript + Tailwind + Vercel AI SDK (OpenAI) + zod + Supabase.
+
+## Always
+- Read spec.md before changing behaviour; keep code consistent with its acceptance criteria (AC1–AC10).
+- Keep the AI limited to extraction (src/lib/ai.ts + src/lib/prompt.ts). Safety, vehicle, crew, pickup-time and fare logic belong in src/lib/rules.ts as pure, tested functions.
+- Run detectEmergency() before calling the AI in /api/plan.
+- Validate every API input with zod schemas from src/lib/schemas.ts. Return friendly JSON errors with correct HTTP codes (400/429/502/503).
+- Recompute the assessment on the server in /api/bookings; never trust client-sent fare/vehicle/crew values.
+- Read secrets only in server-only modules. Never use NEXT_PUBLIC_ for secrets. Never hardcode keys. Update .env.example for new variables.
+- Write or update a vitest test in tests/ for every change, and mock the AI in tests (vi.mock("@/lib/ai")).
+- Use TypeScript strict types; avoid `any`.
+- Use accessible Tailwind UI: labels, focus rings, min-h-11 tap targets, WCAG AA contrast, mobile-first (360px).
+- Use Conventional Commit messages.
+
+## Never
+- Never store patient full names, diagnoses or exact home addresses.
+- Never add real payment processing.
+- Never remove the emergency "Call 911" notice or let blocked plans be confirmed.
+- Never log request bodies or API keys.
+- Never add a dependency when a few lines of code will do.
+
+## Before finishing
+npm run lint && npm run typecheck && npm test && npm run build

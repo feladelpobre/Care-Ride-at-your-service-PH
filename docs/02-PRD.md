@@ -1,0 +1,43 @@
+# CareRide PH — Product Requirements Document (v1.0, MVP)
+
+**Owner:** Feladel "Peng" Pobre · **Status:** Approved for build · **Last updated:** 11 Nov 2026
+
+## 1. Problem Statement
+Caregivers in Metro Manila who arrange hospital and dialysis trips for wheelchair users or patients who cannot walk have no simple way to book a ride *matched to the patient's mobility needs*. Public transport is inaccessible, and the few accessible-van services are booked by phone. Each time, the caregiver must re-explain stairs, wheelchair type and equipment, and mismatches lead to unsafe lifting or missed appointments. In a PGH survey of 413 wheelchair users, **82.3% named accessibility as their top barrier to in-person follow-up** (Acta Medica Philippina, 2024).
+
+## 2. Target Users
+| User | Need |
+|---|---|
+| **Primary — caregiver-coordinator** (adult child or relative, 35–55, Metro Manila) | Book a safe, correctly equipped ride in under 2 minutes by describing the trip in their own words (English or Taglish) |
+| **Secondary — accessible-van dispatcher/driver** | Receive a clear, complete brief: vehicle type, crew size, stairs, equipment, pickup time |
+
+## 3. Core Features (MVP) with Acceptance Criteria
+| # | Feature | Acceptance criterion (testable) |
+|---|---|---|
+| F1 | **AI trip intake:** the caregiver types a free-text description (20–1,500 characters); AI extracts pickup area, destination, appointment date/time, mobility level, stairs/floors, equipment, companions, and whether the trip repeats | Given the sample *"Mama uses a wheelchair, dialysis at St. Luke's BGC on Tuesday 9am, we're on the 3rd floor, no elevator"*, the response contains `mobility = wheelchair`, `floorsWithoutElevator = 3`, `appointmentTime = "09:00"` and a destination containing "St. Luke's", within 15 s |
+| F2 | **Mobility assessment (rules engine):** deterministic rules turn the extraction into a vehicle type, crew size and an assistance checklist | A wheelchair user who must stay seated → `WAV ramp/lift van`; any wheelchair user with ≥1 floor and no elevator → `crew = 2` + "stair assist"; a stretcher-bound patient → booking blocked and "refer to ambulance" shown. Covered by unit tests |
+| F3 | **Suggested pickup time:** worked back from the appointment time using travel time + boarding buffer + early arrival | Appointment 09:00, travel 45 min, boarding 10 min, stair assist +15 min, arrive 15 min early → pickup **07:35**. Covered by unit tests |
+| F4 | **Safety guardrails:** emergency red flags (e.g., "chest pain", "hindi makahinga" / can't breathe, "unconscious") stop the booking and show a "Call 911" banner; inputs are validated; missing details are listed for the caregiver to complete | Input containing "chest pain" returns `emergency = true` *without calling the AI*, and the Confirm button is not rendered. Input under 20 characters returns HTTP 400 with a friendly message |
+| F5 | **Review & confirm → dispatcher board:** the caregiver reviews and edits the plan, enters a contact name, then confirms; the booking appears on `/dispatch` with its driver brief and a ₱ fare *estimate* (no payment) | After confirming, the booking is visible on `/dispatch` with status "Pending" and the same vehicle, crew and pickup time shown on the review screen |
+
+## 4. Out of Scope (v1)
+- Real payments, wallets or insurance/PhilHealth claims
+- Live driver GPS tracking, maps routing and real traffic data (travel time is a caregiver-editable estimate)
+- Driver accounts, matching and acceptance workflow; SMS/Viber notifications
+- Emergency transport of any kind (the app always redirects to 911)
+- Storing patient names, diagnoses or medical records (data minimisation under RA 10173)
+- Native mobile apps (responsive web only)
+
+## 5. Success Metrics
+| Metric | Target (first 30 days after launch) | How measured |
+|---|---|---|
+| **Extraction accuracy** on a 10-case golden set | ≥ 9/10 cases with correct mobility, floors and time | Manual eval script in `docs/eval-cases.md` |
+| **Intake-to-confirm conversion** | ≥ 40% of `trip_analyzed` events lead to `booking_confirmed` | Vercel Analytics custom events |
+| **Time to book** | Median < 2 minutes from first keystroke to confirm | Usability test with 3 caregivers |
+
+## 6. Open Questions
+1. Which accessible-van operators (Lifelifters, Wheelmobile, LGU vans) will accept bookings from a third-party intake tool, and in what format (Viber, email, API)?
+2. Should repeating dialysis trips be auto-booked weekly, or confirmed each week by the caregiver?
+3. What is the right fee model: per booking (caregiver pays) or SaaS (operator pays)?
+4. Do we need explicit consent screens under the Data Privacy Act even when no names or diagnoses are stored?
+5. Can a maps API provide reliable Metro Manila travel-time estimates at an acceptable cost for v2?
