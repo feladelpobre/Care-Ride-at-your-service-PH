@@ -29,7 +29,7 @@ const MOBILITY_LABEL: Record<TripExtraction["mobility"], string> = {
   unknown: "Not sure",
 };
 
-const peso = (n: number) => `₱${n.toLocaleString("en-PH")}`;
+const peso = (n: number) => (n < 0 ? `−₱${Math.abs(n).toLocaleString("en-PH")}` : `₱${n.toLocaleString("en-PH")}`);
 
 type Emergency = { emergency: true; message: string };
 
