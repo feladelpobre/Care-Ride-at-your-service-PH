@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_noStore as noStore } from "next/cache";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Booking } from "./schemas";
 
@@ -15,6 +16,8 @@ function db(): SupabaseClient {
   if (!client) {
     client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
       auth: { persistSession: false },
+      // Never let Next.js cache database reads: bookings change constantly
+      global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) },
     });
   }
   return client;
@@ -101,6 +104,7 @@ export async function saveBooking(b: NewBooking): Promise<Booking> {
 }
 
 export async function listBookings(limit = 50): Promise<Booking[]> {
+  noStore();
   if (storageMode() === "memory") return memory.slice(0, limit);
   const { data, error } = await db().from("bookings").select("*").order("created_at", { ascending: false }).limit(limit);
   if (error) throw new Error(`storage list failed: ${error.code ?? "unknown"}`);

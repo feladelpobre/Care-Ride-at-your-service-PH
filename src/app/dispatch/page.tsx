@@ -2,6 +2,8 @@ import { listBookings, maskName, storageMode } from "@/lib/storage";
 import type { Booking } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 export const metadata = { title: "Dispatcher board · CareRide PH" };
 
 const peso = (n: number) => `₱${n.toLocaleString("en-PH")}`;
