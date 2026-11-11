@@ -15,6 +15,8 @@ CareRide PH is a live, AI-powered web app that helps caregivers in Metro Manila 
 - **Pricing without a maps API.** My stakeholder request (cost from a location to the nearest hospital) arrived mid-build. I solved it offline with city centroids, a curated hospital list and a 1.35 road factor, priced in distance bands customers can understand, and let caregivers override the km.
 - **Taglish and relative dates.** "Bukas alas-otso" has to become tomorrow at 08:00. I injected today's Manila date into the prompt and normalised times (e.g., "2:30 pm" → 14:30) in code.
 - **A tricky test bug.** A Vitest `beforeEach` that returned a value was treated as a cleanup function and failed a test. Reading the failure carefully, instead of rewriting the test, found the cause.
+- **Deployment surprises.** The first live test failed with a 401: the key was an OpenRouter key, not an OpenAI key. Logging the provider's status code (never the key) found it in one step, and I made the AI layer support both providers. Then the dispatcher board showed no bookings even though they were in the database: Next.js was caching the first empty read. I fixed it by turning off caching for database reads.
+- **LLM date maths.** In the golden-set test, "Monday" came back as a Saturday. Instead of trusting the model's arithmetic, I now give it an explicit 14-day calendar; the score went from 9/10 to 10/10.
 - **Privacy.** Health information is sensitive under the Data Privacy Act. I chose data minimisation: pickup *area* only, no diagnoses, masked names on the dispatcher board.
 
 ## What I would improve in v2

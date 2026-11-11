@@ -44,7 +44,7 @@ Browser → /api/bookings → validate → RECOMPUTE plan on server → Supabase
 | Spec (inputs, outputs, AI module, acceptance criteria, edge cases, revision log) | [`spec.md`](spec.md) |
 | Architecture notes | [`docs/architecture.md`](docs/architecture.md) |
 | AI agent rules | [`CLAUDE.md`](CLAUDE.md), [`.cursorrules`](.cursorrules) |
-| AI golden-set evaluation | [`docs/eval-cases.md`](docs/eval-cases.md) |
+| AI golden-set evaluation (10/10 on the live app) | [`docs/eval-cases.md`](docs/eval-cases.md) |
 | Demo script | [`docs/demo-script.md`](docs/demo-script.md) |
 | Reflection | [`docs/reflection.md`](docs/reflection.md) |
 
@@ -74,7 +74,7 @@ Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor, the
 
 ## Tests & CI
 ```bash
-npm test          # 55 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
+npm test          # 56 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
 npm run lint && npm run typecheck && npm run build
 ```
 GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and PR: **gitleaks secret scan → lint → typecheck → tests → build**. Vercel deploys previews for PRs and production from `main`.
