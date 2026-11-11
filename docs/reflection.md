@@ -22,6 +22,7 @@ Care Ride at your service-PH is a live, AI-powered web app that helps caregivers
 ## What I would improve in v2
 - Real road distance and traffic-aware ETAs via a maps API (logged as a GitHub issue)
 - Round-trip and waiting-time pricing, especially for dialysis
+- SMS one-time code (OTP) to verify the mobile number, the strongest protection against fake requests
 - Operator accounts with accept/decline, and SMS/Viber confirmations
 - Running the golden-set evaluation automatically in CI against a small budget
 - Usability testing with 3 real caregivers and 2 van operators (the cheap tests in my validation report)

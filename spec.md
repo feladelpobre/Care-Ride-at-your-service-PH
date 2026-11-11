@@ -32,7 +32,7 @@ In scope: PRD features F1–F7. Regulatory mapping: `docs/03-regulatory-complian
 { "contactName": "string 2–60", "contactPhone": "PH mobile, required", "plan": TripPlan /* incl. options.distanceKm, options.companionHours */ }
 ```
 - `contactPhone` is **required** (anti-fraud and confirmation call). Accepts `09XXXXXXXXX` or `+639XXXXXXXXX` (spaces/dashes allowed) and is stored as `09XXXXXXXXX`.
-- **Anti-fraud cap:** at most 3 ride requests per mobile number in 24 hours; the 4th returns HTTP 429.
+- **Anti-fraud cap:** at most 3 ride requests per mobile number in 24 hours; the 4th returns HTTP 429. SMS one-time-code (OTP) verification is planned for v2.
 - `plan` is re-validated against the `TripPlan` schema, and the **server recomputes the assessment** from `plan.extraction`. Client-supplied vehicle, crew or fare values are never trusted.
 
 ### 2.3 Environment (server-only)

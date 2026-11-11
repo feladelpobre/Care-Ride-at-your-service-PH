@@ -32,6 +32,7 @@ Caregivers in Metro Manila who arrange hospital and dialysis trips for wheelchai
 - Emergency transport of any kind (the app always redirects to 911)
 - Storing patient names, diagnoses or medical records (data minimisation under RA 10173)
 - Native mobile apps (responsive web only)
+- SMS one-time code (OTP) verification of the mobile number (v1 uses a required number + 3 requests/day cap; OTP planned for v2)
 
 ## 5. Success Metrics
 | Metric | Target (first 30 days after launch) | How measured |

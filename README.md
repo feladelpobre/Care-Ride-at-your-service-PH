@@ -102,7 +102,7 @@ Each acceptance criterion in `spec.md` (AC1–AC18) maps to a test file.
 Add-ons: second crew +₱300 · stair assist ₱100/floor · wheelchair provided ₱150 · hospital companion/caregiver ₱250/h (min 2 h). **Senior Citizen / PWD: 20% off the ride fare** (not the add-ons). Distances are approximate (city centroid → hospital × 1.35 road factor) and editable.
 
 ## Limitations & roadmap (v2)
-See the GitHub issue **"v2: Real road distance & traffic-aware ETA via maps API"**. Also planned: round-trip pricing, operator accounts and acceptance flow, SMS/Viber notifications.
+See the GitHub issues **"v2: Real road distance & traffic-aware ETA via maps API"** and **"v2: Verify the mobile number with an SMS one-time code (OTP)"**. Also planned: round-trip pricing, operator accounts and acceptance flow, SMS/Viber notifications.
 
 ## Privacy
 Demo data only. The app asks for a pickup *area* (not a home address) and never asks for diagnoses. Dispatcher views mask contact names. Designed with the PH Data Privacy Act (RA 10173) in mind.
