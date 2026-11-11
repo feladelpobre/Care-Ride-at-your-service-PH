@@ -58,7 +58,7 @@ export default async function DispatchPage() {
       <ul className="space-y-4">
         {bookings.map((b) => (
           <li key={b.id} className="card">
-            <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-lg font-semibold text-zinc-900">
                   {b.pickupTime ?? "TBC"} pickup · {b.destination ?? "Destination TBC"}
@@ -68,7 +68,7 @@ export default async function DispatchPage() {
                   {maskName(b.contactName)}, {maskPhone(b.contactPhone)}
                 </p>
               </div>
-              <div className="w-full text-left md:w-auto md:text-right">
+              <div className="lg:shrink-0 lg:text-right">
                 <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">
                   {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
                 </span>
