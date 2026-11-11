@@ -1,6 +1,6 @@
 # spec.md — CareRide PH
 
-**Version:** 1.1 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
+**Version:** 1.2 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
 
 ---
 
@@ -9,7 +9,7 @@ A responsive web app where a caregiver describes a hospital or dialysis trip in 
 
 **AI capability type:** *extraction + classification* (unstructured text → schema-validated JSON). It is not a chatbot.
 
-In scope: PRD features F1–F5. Out of scope: everything in PRD §4.
+In scope: PRD features F1–F6. Out of scope: everything in PRD §4.
 
 ---
 
@@ -17,16 +17,17 @@ In scope: PRD features F1–F5. Out of scope: everything in PRD §4.
 
 ### 2.1 `POST /api/plan` — analyse a trip
 ```json
-{ "description": "string, 20–1500 chars", "travelMinutes": 45 }
+{ "description": "string, 20–1500 chars", "distanceKm": 10, "companionHours": 3 }
 ```
 | Field | Rule |
 |---|---|
 | `description` | Required. Trimmed. 20–1,500 characters. Control characters stripped. |
-| `travelMinutes` | Optional integer 10–180; default **45** (typical Metro Manila estimate; caregiver-editable). |
+| `distanceKm` | Optional number 0.5–150. If omitted, it is **estimated** from the pickup city and hospital (§3.5). |
+| `companionHours` | Optional integer 0–12. If omitted: the default for the trip purpose when the caregiver asks for a hospital companion, otherwise 0. |
 
 ### 2.2 `POST /api/bookings` — confirm a booking
 ```json
-{ "contactName": "string 2–60", "contactPhone": "PH mobile, optional", "plan": TripPlan }
+{ "contactName": "string 2–60", "contactPhone": "PH mobile, optional", "plan": TripPlan /* incl. options.distanceKm, options.companionHours */ }
 ```
 - `contactPhone`, if given, must match `^(09|\+639)\d{9}$`.
 - `plan` is re-validated against the `TripPlan` schema, and the **server recomputes the assessment** from `plan.extraction`. Client-supplied vehicle, crew or fare values are never trusted.
@@ -52,6 +53,7 @@ In scope: PRD features F1–F5. Out of scope: everything in PRD §4.
 | `companions` | integer 0–3 (clamped) |
 | `recurring` | boolean |
 | `recurrenceNote` | string \| null |
+| `wantsHospitalCompanion` | boolean: the caregiver asks for someone to stay with the patient inside the hospital |
 | `emergencySignals` | boolean |
 | `missingInfo` | string[] |
 | `caregiverSummary` | string (≤ 280 chars) |
@@ -62,15 +64,38 @@ In scope: PRD features F1–F5. Out of scope: everything in PRD §4.
 | `vehicle` | `stretcher_bedbound` → `not_supported`; `wheelchair_must_stay_seated` or `unknown` → `wav_ramp_van`; `wheelchair_can_transfer` / `walks_with_assistance` → `sedan_assist`. Any `oxygen_tank` upgrades a sedan to `wav_ramp_van` |
 | `crewSize` | 2 if (any wheelchair mobility AND `floorsWithoutElevator ≥ 1`); otherwise 1 |
 | `assistChecklist` | Generated from mobility, floors, equipment and companions |
+| `travelMinutes` | `round5(distanceKm × 3.5 + 10)`, clamped 15–180 (Metro Manila average) |
 | `pickupTime` | `appointment − earlyArrival − travel − boarding − stairAssist`. `earlyArrival` = 30 for dialysis, otherwise 15; `boarding` = 10 (+10 if `wav_ramp_van`); `stairAssist` = 15 if crew = 2; the result is floored to 5 minutes. `null` if no appointment time |
-| `fare` | Base ₱350 (sedan) / ₱900 (WAV), +₱300 for a second crew member, +₱100 per floor of stair assist, ±15% range, rounded to ₱10. **Estimate only** |
+| `quote` / `fare` | Itemised one-way estimate; see §3.5. **Estimate only, no payment** |
+| `companionHours` | Billable hospital-companion hours (0, or 2–12) |
 | `blocked` / `blockReason` | `true` if emergency or `not_supported` |
 
 ### 3.3 `TripPlan` (response of `/api/plan`)
 ```json
-{ "extraction": TripExtraction, "assessment": Assessment, "driverBrief": ["string"], "emergency": false, "source": "ai" }
+{ "extraction": TripExtraction, "assessment": Assessment, "driverBrief": ["string"],
+  "options": { "distanceKm": 6.5, "distanceSource": "estimated|default|caregiver", "companionHours": 0 },
+  "route": { "note": "...", "pickupCity": "Pasig", "hospital": "...", "nearestHospitals": [{ "name": "...", "km": 6.5 }] },
+  "emergency": false, "source": "ai" }
 ```
 If the emergency pre-check fires, the response is `{ "emergency": true, "message": "...call 911..." }` and the AI is **not** called.
+
+### 3.5 Distance & Pricing (deterministic, `src/lib/geo.ts`, `src/lib/rules.ts`)
+**Distance:** pickup = centroid of the named Metro Manila city/municipality (19 areas); destination = a curated list of 15 major hospitals (approximate coordinates). Road km = straight-line × 1.35, minimum 2 km, rounded to 0.5 km. If no hospital is named, the plan is priced to the **nearest hospital** and the 3 nearest are listed. If the pickup city is unknown, 10 km is used and the caregiver is asked to adjust. The caregiver can always override the km.
+
+**One-way transport fare (base includes the first 5 km):**
+
+| Distance band | Assist sedan | Wheelchair van (WAV) |
+|---|---|---|
+| Base fare | ₱350 | ₱900 |
+| 0–5 km | +₱0 | +₱0 |
+| 5.1–10 km | +₱150 | +₱300 |
+| 10.1–20 km | +₱400 | +₱750 |
+| 20.1–40 km | +₱900 | +₱1,600 |
+| Over 40 km | +₱900 + ₱30/km beyond 40 | +₱1,600 + ₱50/km beyond 40 |
+
+Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when crew = 2).
+**Hospital companion (optional):** ₱250/hour, minimum 2 h, maximum 12 h. A trained companion stays with the patient inside the hospital (registration, waiting, wheelchair transfers) until the appointment is completed. Default hours when requested: dialysis 5, chemotherapy 6, check-up 3, discharge 3, therapy 2, other 3.
+**Range:** transport subtotal ±15% (traffic) rounded to ₱10; the companion fee is fixed. Total = transport + companion.
 
 ### 3.4 Errors
 | Case | HTTP | Body |
@@ -110,6 +135,8 @@ If the emergency pre-check fires, the response is `{ "emergency": true, "message
 | AC8 | `/api/bookings` ignores a client-tampered fare/vehicle and recomputes it | `tests/bookings-route.test.ts` |
 | AC9 | No secret values in the repo; `OPENAI_API_KEY` is only read in server code | CI gitleaks step + code review |
 | AC10 | Sample F1 input yields the expected fields (live check) | Manual check on the deployed URL (`docs/eval-cases.md`) |
+| AC11 | Distance: "Pasig" → "St. Luke's BGC" is estimated between 3 and 12 km; with no hospital named, the nearest is used; an unknown pickup uses 10 km; band boundaries 5 / 5.5 / 20 / 45 km price correctly | `tests/geo.test.ts`, `tests/rules.test.ts` |
+| AC12 | Hospital companion: 3 h = ₱750, 1 h is billed as 2 h, 15 h is capped at 12 h; a WAV with 2 crew, 3 floors and 10 km totals ₱1,800; the server recomputes the companion fee on booking | `tests/rules.test.ts`, `tests/bookings-route.test.ts` |
 
 ---
 
@@ -142,3 +169,6 @@ If the emergency pre-check fires, the response is `{ "emergency": true, "message
 | 1.1 | Server recomputes the assessment on `/api/bookings` | Review: a client could tamper with the fare or vehicle in the request body |
 | 1.1 | Added rate limiting and the 20 s timeout | Review: protect the OpenAI budget and keep the UI responsive |
 | 1.1 | Replaced "exact address" with "pickup area"; masked names on the board | Review: Data Privacy Act data-minimisation |
+| 1.2 | Replaced the flat fare with **distance-band pricing** plus an itemised quote; added the nearest-hospital estimate | Stakeholder review (founder): customers want to know the cost from their location to the (nearest) hospital |
+| 1.2 | Added the optional **hospital companion** service (hourly, until the appointment is completed) | Stakeholder review: a second revenue line, and caregivers often cannot stay at the hospital |
+| 1.2 | Replaced the `travelMinutes` input with `distanceKm`; travel time is now derived from km | Fewer inputs for caregivers; one number drives both price and pickup time |

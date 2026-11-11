@@ -47,7 +47,7 @@
 2. **Emergency gate** → `detectEmergency()` matches English and Filipino red-flag phrases. On a match, the API returns the 911 message without calling the AI.
 3. **AI extraction** → `extractTrip()` calls `generateObject({ model, schema: aiExtractionSchema, system, prompt })` with today's Manila date injected.
 4. **Normalisation** → `normalizeExtraction()` clamps numbers, checks the `HH:mm` / `YYYY-MM-DD` formats, and adds missing-info hints.
-5. **Rules** → `assess()` makes the deterministic decisions; `buildDriverBrief()` builds a checklist for the crew.
+5. **Distance & rules** → `estimateRoute()` estimates km (or picks the nearest hospital); `assess()` makes the deterministic decisions and `priceQuote()` builds the itemised estimate (distance band + crew + stairs + optional hospital companion); `buildDriverBrief()` builds the crew checklist. The UI calls the same pure `buildPlan()` to re-price instantly when the caregiver edits km or companion hours.
 6. **Confirm** → `/api/bookings` re-validates, recomputes `assess()` server-side, and stores a minimal record.
 7. **Dispatch** → `/dispatch` reads the latest 50 bookings, with names masked.
 
@@ -67,7 +67,9 @@ src/
     emergency.ts             keyword red-flag detector
     prompt.ts                system prompt builder
     ai.ts                    generateObject wrapper (server-only)
-    rules.ts                 assess(), computePickupTime(), estimateFare(), buildDriverBrief()
+    rules.ts                 assess(), computePickupTime(), priceQuote() (distance bands + companion), buildDriverBrief()
+    geo.ts                   offline distance: city centroids + hospital list, nearest-hospital lookup
+    plan.ts                  buildPlan(): shared by API routes and UI for instant re-pricing
     normalize.ts             normalizeExtraction()
     storage.ts               Supabase / in-memory adapter (server-only)
     rateLimit.ts             in-memory token bucket
@@ -77,7 +79,7 @@ supabase/schema.sql          table + RLS
 ```
 
 ## 5. Database (Supabase)
-`public.bookings`: `id uuid pk`, `created_at timestamptz`, `contact_name text`, `contact_phone text null`, `pickup_area text`, `destination text`, `appointment_date date null`, `appointment_time text null`, `pickup_time text null`, `trip_purpose text`, `mobility text`, `vehicle_type text`, `crew_size int`, `fare_min int`, `fare_max int`, `driver_brief jsonb`, `recurring bool`, `status text default 'pending'`.
+`public.bookings`: `id uuid pk`, `created_at timestamptz`, `contact_name text`, `contact_phone text null`, `pickup_area text`, `destination text`, `appointment_date date null`, `appointment_time text null`, `pickup_time text null`, `distance_km numeric`, `companion_hours int`, `trip_purpose text`, `mobility text`, `vehicle_type text`, `crew_size int`, `fare_min int`, `fare_max int`, `driver_brief jsonb`, `recurring bool`, `status text default 'pending'`.
 RLS is enabled with **no** policies for `anon`/`authenticated`, so only the server's service-role key can read or write.
 
 ## 6. Security Design

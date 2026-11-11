@@ -1,6 +1,6 @@
 # CareRide PH — Product Requirements Document (v1.0, MVP)
 
-**Owner:** Feladel "Peng" Pobre · **Status:** Approved for build · **Last updated:** 11 Nov 2026
+**Owner:** Feladel "Peng" Pobre · **Status:** Approved for build (v1.1: added F6) · **Last updated:** 11 Nov 2026
 
 ## 1. Problem Statement
 Caregivers in Metro Manila who arrange hospital and dialysis trips for wheelchair users or patients who cannot walk have no simple way to book a ride *matched to the patient's mobility needs*. Public transport is inaccessible, and the few accessible-van services are booked by phone. Each time, the caregiver must re-explain stairs, wheelchair type and equipment, and mismatches lead to unsafe lifting or missed appointments. In a PGH survey of 413 wheelchair users, **82.3% named accessibility as their top barrier to in-person follow-up** (Acta Medica Philippina, 2024).
@@ -18,11 +18,15 @@ Caregivers in Metro Manila who arrange hospital and dialysis trips for wheelchai
 | F2 | **Mobility assessment (rules engine):** deterministic rules turn the extraction into a vehicle type, crew size and an assistance checklist | A wheelchair user who must stay seated → `WAV ramp/lift van`; any wheelchair user with ≥1 floor and no elevator → `crew = 2` + "stair assist"; a stretcher-bound patient → booking blocked and "refer to ambulance" shown. Covered by unit tests |
 | F3 | **Suggested pickup time:** worked back from the appointment time using travel time + boarding buffer + early arrival | Appointment 09:00, travel 45 min, boarding 10 min, stair assist +15 min, arrive 15 min early → pickup **07:35**. Covered by unit tests |
 | F4 | **Safety guardrails:** emergency red flags (e.g., "chest pain", "hindi makahinga" / can't breathe, "unconscious") stop the booking and show a "Call 911" banner; inputs are validated; missing details are listed for the caregiver to complete | Input containing "chest pain" returns `emergency = true` *without calling the AI*, and the Confirm button is not rendered. Input under 20 characters returns HTTP 400 with a friendly message |
+| F6 | **Distance-based price estimate + hospital companion add-on:** the fare is estimated from the pickup city to the named (or **nearest**) hospital using distance bands (0–5 / 5–10 / 10–20 / 20–40 / 40+ km); the caregiver can adjust the km and add a hospital companion (₱250/h, min 2 h) who stays inside the hospital until the appointment is done | WAV + 2 crew + 3 floors + 10 km = **₱1,800**; adding a 3 h companion adds **₱750**; with no hospital named, the quote shows "priced to the nearest: …". Covered by unit tests |
 | F5 | **Review & confirm → dispatcher board:** the caregiver reviews and edits the plan, enters a contact name, then confirms; the booking appears on `/dispatch` with its driver brief and a ₱ fare *estimate* (no payment) | After confirming, the booking is visible on `/dispatch` with status "Pending" and the same vehicle, crew and pickup time shown on the review screen |
+
+*Feature order: F1 → F2 → F3 → F6 → F4 → F5 (F6 was added in v1.1 after stakeholder review).*
 
 ## 4. Out of Scope (v1)
 - Real payments, wallets or insurance/PhilHealth claims
-- Live driver GPS tracking, maps routing and real traffic data (travel time is a caregiver-editable estimate)
+- Live driver GPS tracking, maps routing and real traffic data (distance is estimated from city and hospital coordinates; caregivers can edit it)
+- Round-trip pricing and waiting-time billing for the van (v2)
 - Driver accounts, matching and acceptance workflow; SMS/Viber notifications
 - Emergency transport of any kind (the app always redirects to 911)
 - Storing patient names, diagnoses or medical records (data minimisation under RA 10173)
@@ -32,6 +36,7 @@ Caregivers in Metro Manila who arrange hospital and dialysis trips for wheelchai
 | Metric | Target (first 30 days after launch) | How measured |
 |---|---|---|
 | **Extraction accuracy** on a 10-case golden set | ≥ 9/10 cases with correct mobility, floors and time | Manual eval script in `docs/eval-cases.md` |
+| **Companion add-on attach rate** | ≥ 20% of confirmed bookings include a hospital companion | `booking_confirmed` event property `companion` |
 | **Intake-to-confirm conversion** | ≥ 40% of `trip_analyzed` events lead to `booking_confirmed` | Vercel Analytics custom events |
 | **Time to book** | Median < 2 minutes from first keystroke to confirm | Usability test with 3 caregivers |
 
