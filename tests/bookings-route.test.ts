@@ -26,17 +26,17 @@ describe("POST /api/bookings", () => {
   it("recomputes the companion fee from hours, not from a client total", async () => {
     const plan = buildPlan(x(), { distanceKm: 3, companionHours: 3 });
     const tampered = { ...plan, assessment: { ...plan.assessment, quote: { ...plan.assessment.quote, total: 0 } } };
-    const { booking } = await (await call({ contactName: "Liza", plan: tampered })).json();
+    const { booking } = await (await call({ contactName: "Liza", contactPhone: "09170000001", plan: tampered })).json();
     expect(booking.assessment.quote.companionSubtotal).toBe(750);
   });
 
   it("refuses to book blocked (stretcher) plans", async () => {
-    const res = await call({ contactName: "Liza", plan: makePlan(x({ mobility: "stretcher_bedbound" })) });
+    const res = await call({ contactName: "Liza", contactPhone: "09170000002", plan: makePlan(x({ mobility: "stretcher_bedbound" })) });
     expect(res.status).toBe(422);
   });
 
   it("returns 400 when the contact name is missing", async () => {
-    const res = await call({ contactName: "", plan: makePlan() });
+    const res = await call({ contactName: "", contactPhone: "09170009999", plan: makePlan() });
     expect(res.status).toBe(400);
   });
 
@@ -49,7 +49,7 @@ import { bookingReference, formatManilaDateTime } from "@/lib/format";
 describe("traceable request date and reference (AC17)", () => {
   it("returns a CR- reference and the request timestamp", async () => {
     const before = Date.now();
-    const res = await call({ contactName: "Liza", plan: makePlan() });
+    const res = await call({ contactName: "Liza", contactPhone: "09170000003", plan: makePlan() });
     const { booking } = await res.json();
     expect(booking.reference).toMatch(/^CR-[0-9A-F]{8}$/);
     expect(Date.parse(booking.requestedAt)).toBeGreaterThanOrEqual(before - 1000);
@@ -57,5 +57,28 @@ describe("traceable request date and reference (AC17)", () => {
   it("formats references and Manila times consistently", () => {
     expect(bookingReference("4d718c0b-1cbe-478a-8ea2-82fbb6852ca3")).toBe("CR-4D718C0B");
     expect(formatManilaDateTime("2026-11-11T14:44:00Z")).toBe("Nov 11, 2026, 10:44 PM");
+  });
+});
+
+describe("mobile number is required, and repeat requests are capped (AC18)", () => {
+  it("rejects a request without a mobile number", async () => {
+    const res = await call({ contactName: "Liza", plan: makePlan() });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/mobile number/i);
+  });
+  it("rejects an empty mobile number", async () => {
+    expect((await call({ contactName: "Liza", contactPhone: "", plan: makePlan() })).status).toBe(400);
+  });
+  it("allows 3 requests per number per day, then returns 429", async () => {
+    const send = () => call({ contactName: "Liza", contactPhone: "0918 555 0001", plan: makePlan() });
+    for (let i = 0; i < 3; i++) expect((await send()).status).toBe(201);
+    const fourth = await send();
+    expect(fourth.status).toBe(429);
+    expect((await fourth.json()).error).toMatch(/3 ride requests today/);
+  });
+  it("masks phone numbers for the dispatcher board", async () => {
+    const { maskPhone } = await import("@/lib/storage");
+    expect(maskPhone("09171234567")).toBe("0917 *** 4567");
+    expect(maskPhone(null)).toBe("not given");
   });
 });

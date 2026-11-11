@@ -29,10 +29,10 @@ describe("booking request validation", () => {
     const r = bookingRequestSchema.shape.contactPhone.safeParse("12345");
     expect(r.success).toBe(false);
   });
-  it("accepts 09xx and +639xx formats, and empty", () => {
+  it("accepts 09xx and +639xx formats and stores them as 09XXXXXXXXX; rejects empty", () => {
     expect(bookingRequestSchema.shape.contactPhone.parse("0917 123 4567")).toBe("09171234567");
-    expect(bookingRequestSchema.shape.contactPhone.parse("+639171234567")).toBe("+639171234567");
-    expect(bookingRequestSchema.shape.contactPhone.parse("")).toBeUndefined();
+    expect(bookingRequestSchema.shape.contactPhone.parse("+639171234567")).toBe("09171234567");
+    expect(bookingRequestSchema.shape.contactPhone.safeParse("").success).toBe(false);
   });
 });
 

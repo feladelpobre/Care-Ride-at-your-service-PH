@@ -1,6 +1,6 @@
 # spec.md — Care Ride at your service-PH
 
-**Version:** 1.5 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
+**Version:** 1.6 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
 
 ---
 
@@ -29,9 +29,10 @@ In scope: PRD features F1–F7. Regulatory mapping: `docs/03-regulatory-complian
 
 ### 2.2 `POST /api/bookings` — confirm a booking
 ```json
-{ "contactName": "string 2–60", "contactPhone": "PH mobile, optional", "plan": TripPlan /* incl. options.distanceKm, options.companionHours */ }
+{ "contactName": "string 2–60", "contactPhone": "PH mobile, required", "plan": TripPlan /* incl. options.distanceKm, options.companionHours */ }
 ```
-- `contactPhone`, if given, must match `^(09|\+639)\d{9}$`.
+- `contactPhone` is **required** (anti-fraud and confirmation call). Accepts `09XXXXXXXXX` or `+639XXXXXXXXX` (spaces/dashes allowed) and is stored as `09XXXXXXXXX`.
+- **Anti-fraud cap:** at most 3 ride requests per mobile number in 24 hours; the 4th returns HTTP 429.
 - `plan` is re-validated against the `TripPlan` schema, and the **server recomputes the assessment** from `plan.extraction`. Client-supplied vehicle, crew or fare values are never trusted.
 
 ### 2.3 Environment (server-only)
@@ -142,6 +143,7 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | AC13 | Senior/PWD ticked: 20% off the ride fare only (₱1,200 fare → −₱240; wheelchair and companion not discounted); driver checklist includes the ID check | `tests/addons.test.ts` |
 | AC14 | Wheelchair ticked: +₱150 line and "Bring a clean, checked wheelchair" first in the checklist | `tests/addons.test.ts` |
 | AC15 | Step-1 tick boxes reach `/api/plan` (companion ticked → default hours) and `/api/bookings` stores them, recomputing the discount server-side | `tests/addons.test.ts` |
+| AC18 | Booking without a mobile number (or empty) → 400 "Please enter a mobile number…"; the 4th request from the same number within 24 h → 429; dispatcher shows the number masked (0917 *** 4567) | `tests/bookings-route.test.ts`, `tests/validation.test.ts` |
 | AC17 | Every confirmed request gets a reference (`CR-` + 8 characters) and its request date/time; both appear on the confirmation and on the dispatcher card (Manila time) | `tests/bookings-route.test.ts` |
 | AC16 | Insights: 4 plans + 2 requests → 50% conversion, "meets 40% target"; events hold no personal data; no data → "–" | `tests/insights.test.ts` |
 | AC12 | Hospital companion: 3 h = ₱750, 1 h is billed as 2 h, 15 h is capped at 12 h; a WAV with 2 crew, 3 floors and 10 km totals ₱1,800; the server recomputes the companion fee on booking | `tests/rules.test.ts`, `tests/bookings-route.test.ts` |
@@ -180,6 +182,7 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | 1.1 | Replaced "exact address" with "pickup area"; masked names on the board | Review: Data Privacy Act data-minimisation |
 | 1.2 | Replaced the flat fare with **distance-band pricing** plus an itemised quote; added the nearest-hospital estimate | Stakeholder review (founder): customers want to know the cost from their location to the (nearest) hospital |
 | 1.2 | Added the optional **hospital companion** service (hourly, until the appointment is completed) | Stakeholder review: a second revenue line, and caregivers often cannot stay at the hospital |
+| 1.6 | Mobile number made **required**; max 3 requests per number per 24 h; masked number on the dispatcher board | Stakeholder review: prevent fraudulent/fake requests and allow a confirmation call |
 | 1.5 | Request date/time and `CR-` reference shown on confirmation and dispatcher cards | Stakeholder review: applications must be traceable by date |
 | 1.4 | Funnel events stored in Supabase and shown in a dispatcher **Insights** panel | Vercel custom events are not available on the free Hobby plan |
 | 1.3 | Added step-1 **tick boxes** (wheelchair, hospital companion/caregiver, Senior/PWD) | Stakeholder review: choices must be visible up front, not hidden in the text |

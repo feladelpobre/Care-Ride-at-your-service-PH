@@ -49,7 +49,7 @@ describe("Step-1 tick boxes reach the plan and the booking (AC15)", () => {
   it("booking stores the options and recomputes the discount server-side", async () => {
     const plan = buildPlan(x(), { distanceKm: 10, wheelchairRental: true, seniorPwdDiscount: true });
     const tampered = { ...plan, assessment: { ...plan.assessment, quote: { ...plan.assessment.quote, discount: 9999 } } };
-    const res = await bookPOST(new Request("http://t/api/bookings", { method: "POST", body: JSON.stringify({ contactName: "Liza", plan: tampered }) }));
+    const res = await bookPOST(new Request("http://t/api/bookings", { method: "POST", body: JSON.stringify({ contactName: "Liza", contactPhone: "09175550123", plan: tampered }) }));
     expect(res.status).toBe(201);
     const { booking } = await res.json();
     expect(booking.assessment.quote.discount).toBe(Math.round((350 + 150) * 0.2)); // sedan base + 5.1–10 km band

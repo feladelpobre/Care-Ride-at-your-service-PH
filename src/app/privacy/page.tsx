@@ -28,7 +28,10 @@ export default function PrivacyPage() {
       <section>
         <h2>2. What we collect</h2>
         <ul>
-          <li>Your name and, if you give it, your mobile number (to confirm the ride).</li>
+          <li>
+            Your name and <strong>mobile number</strong> (required). We use the number only to confirm each request by phone before a
+            van is sent, and to prevent fake bookings. Dispatch screens show it partly hidden (e.g. 0917 *** 4567).
+          </li>
           <li>Pickup <strong>area</strong> (barangay/city), hospital, appointment date and time. We do not ask for a full home address.</li>
           <li>
             The patient&apos;s <strong>mobility needs</strong> (for example: uses a wheelchair, number of stairs, oxygen tank).

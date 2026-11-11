@@ -1,4 +1,4 @@
-import { listBookings, listEvents, maskName, storageMode } from "@/lib/storage";
+import { listBookings, listEvents, maskName, maskPhone, storageMode } from "@/lib/storage";
 import { bookingReference, formatManilaDateTime } from "@/lib/format";
 import { computeInsights, CONVERSION_TARGET_PCT, type Insights } from "@/lib/insights";
 import type { Booking } from "@/lib/schemas";
@@ -56,7 +56,7 @@ export default async function DispatchPage() {
                 </p>
                 <p className="text-sm text-zinc-600">
                   Appointment {b.appointmentDate ?? "date TBC"} · from {b.pickupArea ?? "area TBC"} · {b.distanceKm} km · contact{" "}
-                  {maskName(b.contactName)}
+                  {maskName(b.contactName)}, {maskPhone(b.contactPhone)}
                 </p>
               </div>
               <div className="w-full sm:w-auto sm:text-right">

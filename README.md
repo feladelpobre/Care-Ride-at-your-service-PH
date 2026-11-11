@@ -24,6 +24,7 @@ In a 2024 PGH study of 413 wheelchair users, **82.3% named accessibility as thei
 | 🧑‍⚕️ | **Hospital companion add-on:** ₱250/h (min 2 h), stays with the patient inside the hospital until the appointment is done |
 | ☑️ | **Tick boxes up front:** Wheelchair (₱150) · Hospital companion/caregiver · Senior Citizen/PWD 20% fare discount (RA 9994 / RA 10754) |
 | ⚖️ | **Compliance built in:** Privacy Notice (Data Privacy Act), Terms with complaints/redress (Internet Transactions Act), non-emergency PTV positioning (DOH AO 2018-0001). See the [compliance plan](docs/03-regulatory-compliance.md) |
+| 📱 | **Anti-fraud:** a PH mobile number is required for every request (confirmation call), with a limit of 3 requests per number per day |
 | 🚨 | **Safety guardrails:** an emergency red-flag check runs *before* the AI and shows "Call 911"; stretcher cases are blocked; the server recomputes all prices |
 | 📋 | **Dispatcher board:** every request shows its reference (e.g. CR-4D718C0B) and the date and time it was requested, with the driver brief; names masked for privacy |
 
@@ -77,12 +78,12 @@ Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor, the
 
 ## Tests & CI
 ```bash
-npm test          # 66 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
+npm test          # 70 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
 npm run lint && npm run typecheck && npm run build
 ```
 GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and PR: **gitleaks secret scan → lint → typecheck → tests → build**. Vercel deploys previews for PRs and production from `main`.
 
-Each acceptance criterion in `spec.md` (AC1–AC17) maps to a test file.
+Each acceptance criterion in `spec.md` (AC1–AC18) maps to a test file.
 
 ## Monitoring
 - **Vercel Web Analytics:** visitors, page views, pages, countries, devices

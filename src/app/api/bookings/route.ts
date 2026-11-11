@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { bookingRequestSchema } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
-import { recordEvent, saveBooking } from "@/lib/storage";
+import { countRecentBookingsByPhone, recordEvent, saveBooking } from "@/lib/storage";
 import { bookingReference } from "@/lib/format";
 
 export const runtime = "nodejs";
+
+const MAX_REQUESTS_PER_PHONE_PER_DAY = 3;
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -36,10 +38,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: assessment.blockReason }, { status: 422 });
   }
 
+  // Anti-fraud: cap ride requests per mobile number per 24 hours
+  try {
+    if ((await countRecentBookingsByPhone(contactPhone)) >= MAX_REQUESTS_PER_PHONE_PER_DAY) {
+      return NextResponse.json(
+        { error: "This mobile number already has 3 ride requests today. Please call us to add more trips." },
+        { status: 429 },
+      );
+    }
+  } catch {
+    return NextResponse.json({ error: "Could not save the booking. Please try again." }, { status: 503 });
+  }
+
   try {
     const booking = await saveBooking({
       contactName,
-      contactPhone: contactPhone ?? null,
+      contactPhone,
       pickupArea: x.pickupArea,
       destination: x.destination,
       appointmentDate: x.appointmentDate,

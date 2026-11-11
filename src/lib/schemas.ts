@@ -141,12 +141,16 @@ export type PlanRequest = z.infer<typeof planRequestSchema>;
 
 export const bookingRequestSchema = z.object({
   contactName: z.string().transform(sanitizeText).pipe(z.string().min(2, "Please enter a contact name.").max(60)),
+  /** Required: used to verify and confirm every request (deters fake bookings). Stored as 09XXXXXXXXX. */
   contactPhone: z
-    .string()
-    .transform((s) => s.replace(/[\s-]/g, ""))
-    .pipe(z.string().regex(/^(09|\+639)\d{9}$/, "Use a PH mobile number like 09171234567."))
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+    .string({ required_error: "Please enter a mobile number so we can confirm the ride." })
+    .transform((s) => s.replace(/[\s-]/g, "").replace(/^\+63/, "0"))
+    .pipe(
+      z
+        .string()
+        .min(1, "Please enter a mobile number so we can confirm the ride.")
+        .regex(/^09\d{9}$/, "Use a PH mobile number like 0917 123 4567."),
+    ),
   plan: tripPlanSchema,
 });
 export type BookingRequest = z.infer<typeof bookingRequestSchema>;

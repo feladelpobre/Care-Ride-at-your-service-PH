@@ -493,9 +493,23 @@ export default function TripIntake() {
                   </div>
                   <div>
                     <label htmlFor="cphone" className="label">
-                      Mobile number (optional)
+                      Mobile number
                     </label>
-                    <input id="cphone" className="input" inputMode="tel" placeholder="09171234567" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
+                    <input
+                      id="cphone"
+                      className="input"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      placeholder="0917 123 4567"
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      required
+                      aria-describedby="cphone-help"
+                    />
+                    <p id="cphone-help" className="mt-1 text-sm text-zinc-600">
+                      Required. We call this number to confirm before any van is sent.
+                    </p>
                   </div>
                   <label className="flex items-start gap-3 text-sm text-zinc-700 sm:col-span-2">
                     <input type="checkbox" className="mt-1 h-5 w-5 accent-ube-800" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
@@ -512,7 +526,7 @@ export default function TripIntake() {
                       . I didn&apos;t include diagnoses or other medical details that aren&apos;t needed.
                     </span>
                   </label>
-                  <button type="submit" className="btn-primary sm:col-span-2" disabled={saving || !consent || contactName.trim().length < 2}>
+                  <button type="submit" className="btn-primary sm:col-span-2" disabled={saving || !consent || contactName.trim().length < 2 || !isPhMobile(contactPhone)}>
                     {saving ? "Sending…" : `Request this ride · ${peso(plan.assessment.quote.total)} est.`}
                   </button>
                 </form>
@@ -523,6 +537,11 @@ export default function TripIntake() {
       )}
     </div>
   );
+}
+
+/** Client-side hint only; the server validates again. Accepts 09XXXXXXXXX or +639XXXXXXXXX. */
+function isPhMobile(v: string): boolean {
+  return /^(09|\+639)\d{9}$/.test(v.replace(/[\s-]/g, ""));
 }
 
 function Tick(props: { checked: boolean; onChange: (v: boolean) => void; title: string; detail: string; icon?: React.ReactNode }) {

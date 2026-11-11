@@ -111,6 +111,28 @@ export async function saveBooking(b: NewBooking): Promise<Booking> {
   return fromRow(data as Row);
 }
 
+/** Anti-fraud: how many requests this mobile number made in the last `hours` hours. */
+export async function countRecentBookingsByPhone(phone: string, hours = 24): Promise<number> {
+  noStore();
+  const since = Date.now() - hours * 3_600_000;
+  if (storageMode() === "memory") {
+    return memory.filter((b) => b.contactPhone === phone && Date.parse(b.createdAt) >= since).length;
+  }
+  const { count, error } = await db()
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("contact_phone", phone)
+    .gte("created_at", new Date(since).toISOString());
+  if (error) throw new Error(`storage count failed: ${error.code ?? "unknown"}`);
+  return count ?? 0;
+}
+
+/** "09171234567" -> "0917 *** 4567" for screens that don't need the full number. */
+export function maskPhone(phone: string | null): string {
+  if (!phone || phone.length < 8) return "not given";
+  return `${phone.slice(0, 4)} *** ${phone.slice(-4)}`;
+}
+
 export async function listBookings(limit = 50): Promise<Booking[]> {
   noStore();
   if (storageMode() === "memory") return memory.slice(0, limit);
