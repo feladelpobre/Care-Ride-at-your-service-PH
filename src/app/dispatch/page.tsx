@@ -68,7 +68,7 @@ export default async function DispatchPage() {
                   {maskName(b.contactName)}, {maskPhone(b.contactPhone)}
                 </p>
               </div>
-              <div className="w-full sm:w-auto sm:text-right">
+              <div className="w-full text-left md:w-auto md:text-right">
                 <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">
                   {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
                 </span>
