@@ -22,6 +22,8 @@ In a 2024 PGH study of 413 wheelchair users, **82.3% named accessibility as thei
 | ⏰ | **Pickup time:** worked back from the appointment (early arrival, travel, boarding, stairs) |
 | 💸 | **Distance-band price estimate:** pickup city → named **or nearest** hospital; bands 0–5 / 5–10 / 10–20 / 20–40 / 40+ km; itemised quote |
 | 🧑‍⚕️ | **Hospital companion add-on:** ₱250/h (min 2 h), stays with the patient inside the hospital until the appointment is done |
+| ☑️ | **Tick boxes up front:** Wheelchair (₱150) · Hospital companion/caregiver · Senior Citizen/PWD 20% fare discount (RA 9994 / RA 10754) |
+| ⚖️ | **Compliance built in:** Privacy Notice (Data Privacy Act), Terms with complaints/redress (Internet Transactions Act), non-emergency PTV positioning (DOH AO 2018-0001). See the [compliance plan](docs/03-regulatory-compliance.md) |
 | 🚨 | **Safety guardrails:** an emergency red-flag check runs *before* the AI and shows "Call 911"; stretcher cases are blocked; the server recomputes all prices |
 | 📋 | **Dispatcher board:** confirmed requests with driver briefs; names masked for privacy |
 
@@ -41,6 +43,7 @@ Browser → /api/bookings → validate → RECOMPUTE plan on server → Supabase
 |---|---|
 | Idea Validation Report (7 steps) | [`docs/01-idea-validation.md`](docs/01-idea-validation.md) |
 | PRD (1 page) | [`docs/02-PRD.md`](docs/02-PRD.md) |
+| Regulatory & healthcare compliance plan | [`docs/03-regulatory-compliance.md`](docs/03-regulatory-compliance.md) |
 | Spec (inputs, outputs, AI module, acceptance criteria, edge cases, revision log) | [`spec.md`](spec.md) |
 | Architecture notes | [`docs/architecture.md`](docs/architecture.md) |
 | AI agent rules | [`CLAUDE.md`](CLAUDE.md), [`.cursorrules`](.cursorrules) |
@@ -74,12 +77,12 @@ Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor, the
 
 ## Tests & CI
 ```bash
-npm test          # 56 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
+npm test          # 61 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
 npm run lint && npm run typecheck && npm run build
 ```
 GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and PR: **gitleaks secret scan → lint → typecheck → tests → build**. Vercel deploys previews for PRs and production from `main`.
 
-Each acceptance criterion in `spec.md` (AC1–AC12) maps to a test file.
+Each acceptance criterion in `spec.md` (AC1–AC15) maps to a test file.
 
 ## Monitoring
 - **Vercel Analytics:** page views + custom events `trip_analyzed`, `booking_confirmed`, `emergency_redirect` (funnel for the PRD success metrics)
@@ -94,7 +97,7 @@ Each acceptance criterion in `spec.md` (AC1–AC12) maps to a test file.
 | 20.1–40 km | +₱900 | +₱1,600 |
 | Over 40 km | +₱900 + ₱30/km | +₱1,600 + ₱50/km |
 
-Add-ons: second crew +₱300 · stair assist ₱100/floor · hospital companion ₱250/h (min 2 h). Distances are approximate (city centroid → hospital × 1.35 road factor) and editable.
+Add-ons: second crew +₱300 · stair assist ₱100/floor · wheelchair provided ₱150 · hospital companion/caregiver ₱250/h (min 2 h). **Senior Citizen / PWD: 20% off the ride fare** (not the add-ons). Distances are approximate (city centroid → hospital × 1.35 road factor) and editable.
 
 ## Limitations & roadmap (v2)
 See the GitHub issue **"v2: Real road distance & traffic-aware ETA via maps API"**. Also planned: round-trip pricing, operator accounts and acceptance flow, SMS/Viber notifications.

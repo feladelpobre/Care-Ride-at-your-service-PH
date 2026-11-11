@@ -1,6 +1,6 @@
 # spec.md — Care Ride at your service-PH
 
-**Version:** 1.2 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
+**Version:** 1.3 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
 
 ---
 
@@ -9,7 +9,7 @@ A responsive web app where a caregiver describes a hospital or dialysis trip in 
 
 **AI capability type:** *extraction + classification* (unstructured text → schema-validated JSON). It is not a chatbot.
 
-In scope: PRD features F1–F6. Out of scope: everything in PRD §4.
+In scope: PRD features F1–F7. Regulatory mapping: `docs/03-regulatory-compliance.md`. Out of scope: everything in PRD §4.
 
 ---
 
@@ -17,13 +17,15 @@ In scope: PRD features F1–F6. Out of scope: everything in PRD §4.
 
 ### 2.1 `POST /api/plan` — analyse a trip
 ```json
-{ "description": "string, 20–1500 chars", "distanceKm": 10, "companionHours": 3 }
+{ "description": "string, 20–1500 chars", "distanceKm": 10, "companionHours": 3,
+  "addons": { "wheelchair": false, "companion": false, "seniorPwd": false } }
 ```
 | Field | Rule |
 |---|---|
 | `description` | Required. Trimmed. 20–1,500 characters. Control characters stripped. |
 | `distanceKm` | Optional number 0.5–150. If omitted, it is **estimated** from the pickup city and hospital (§3.5). |
-| `companionHours` | Optional integer 0–12. If omitted: the default for the trip purpose when the caregiver asks for a hospital companion, otherwise 0. |
+| `companionHours` | Optional integer 0–12. If omitted: the default for the trip purpose when the companion box is ticked or the message asks for one, otherwise 0. |
+| `addons` | Step-1 tick boxes: `wheelchair` (we bring one, ₱150), `companion` (hospital companion/caregiver), `seniorPwd` (20% fare discount). All default `false`. |
 
 ### 2.2 `POST /api/bookings` — confirm a booking
 ```json
@@ -93,7 +95,8 @@ If the emergency pre-check fires, the response is `{ "emergency": true, "message
 | 20.1–40 km | +₱900 | +₱1,600 |
 | Over 40 km | +₱900 + ₱30/km beyond 40 | +₱1,600 + ₱50/km beyond 40 |
 
-Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when crew = 2).
+Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when crew = 2); **wheelchair provided ₱150 per trip**.
+**Senior Citizen / PWD discount:** 20% of the ride fare (base + distance + crew + stairs), rounded to the peso, per RA 9994 and RA 10754; not applied to the wheelchair or companion add-ons. The ID is checked by the driver; the ID number is never stored.
 **Hospital companion (optional):** ₱250/hour, minimum 2 h, maximum 12 h. A trained companion stays with the patient inside the hospital (registration, waiting, wheelchair transfers) until the appointment is completed. Default hours when requested: dialysis 5, chemotherapy 6, check-up 3, discharge 3, therapy 2, other 3.
 **Range:** transport subtotal ±15% (traffic) rounded to ₱10; the companion fee is fixed. Total = transport + companion.
 
@@ -136,6 +139,9 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | AC9 | No secret values in the repo; `OPENAI_API_KEY` is only read in server code | CI gitleaks step + code review |
 | AC10 | Sample F1 input yields the expected fields (live check) | Manual check on the deployed URL (`docs/eval-cases.md`) |
 | AC11 | Distance: "Pasig" → "St. Luke's BGC" is estimated between 3 and 12 km; with no hospital named, the nearest is used; an unknown pickup uses 10 km; band boundaries 5 / 5.5 / 20 / 45 km price correctly | `tests/geo.test.ts`, `tests/rules.test.ts` |
+| AC13 | Senior/PWD ticked: 20% off the ride fare only (₱1,200 fare → −₱240; wheelchair and companion not discounted); driver checklist includes the ID check | `tests/addons.test.ts` |
+| AC14 | Wheelchair ticked: +₱150 line and "Bring a clean, checked wheelchair" first in the checklist | `tests/addons.test.ts` |
+| AC15 | Step-1 tick boxes reach `/api/plan` (companion ticked → default hours) and `/api/bookings` stores them, recomputing the discount server-side | `tests/addons.test.ts` |
 | AC12 | Hospital companion: 3 h = ₱750, 1 h is billed as 2 h, 15 h is capped at 12 h; a WAV with 2 crew, 3 floors and 10 km totals ₱1,800; the server recomputes the companion fee on booking | `tests/rules.test.ts`, `tests/bookings-route.test.ts` |
 
 ---
@@ -153,7 +159,8 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 ## 7. Non-Functional & Security Requirements
 - No secrets in client bundles: only server routes read env vars; `.env*` files are git-ignored; `.env.example` ships with blank values.
 - Supabase: Row Level Security **enabled with no anon policies**; the server writes with the service-role key; the dispatcher board masks contact names (e.g., "L***").
-- Data minimisation: no full names, diagnoses or exact home addresses are required (pickup *area* only).
+- Data minimisation: no full names, diagnoses or exact home addresses are required (pickup *area* only); Senior/PWD stored as a yes/no flag, never the ID number.
+- Consent: the confirm form requires explicit consent that names the health information (mobility needs) and links to `/privacy` (RA 10173) and `/terms` (RA 11967 redress mechanism).
 - Monitoring: Vercel Analytics (page views + `trip_analyzed`, `booking_confirmed`, `emergency_redirect` events); `GET /api/health` returns `{ status, ai, storage }`.
 - Accessibility: large tap targets (≥ 44 px), labelled inputs, WCAG AA contrast, works at 360 px width.
 - Performance: p95 `/api/plan` < 10 s with `gpt-4o-mini`.
@@ -171,4 +178,6 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | 1.1 | Replaced "exact address" with "pickup area"; masked names on the board | Review: Data Privacy Act data-minimisation |
 | 1.2 | Replaced the flat fare with **distance-band pricing** plus an itemised quote; added the nearest-hospital estimate | Stakeholder review (founder): customers want to know the cost from their location to the (nearest) hospital |
 | 1.2 | Added the optional **hospital companion** service (hourly, until the appointment is completed) | Stakeholder review: a second revenue line, and caregivers often cannot stay at the hospital |
+| 1.3 | Added step-1 **tick boxes** (wheelchair, hospital companion/caregiver, Senior/PWD) | Stakeholder review: choices must be visible up front, not hidden in the text |
+| 1.3 | Added the statutory **20% Senior/PWD fare discount**, Privacy Notice, Terms and stronger consent | Compliance review against RA 9994, RA 10754, RA 10173, RA 11967, DOH AO 2018-0001 (see `docs/03-regulatory-compliance.md`) |
 | 1.2 | Replaced the `travelMinutes` input with `distanceKm`; travel time is now derived from km | Fewer inputs for caregivers; one number drives both price and pickup time |

@@ -17,8 +17,9 @@ A Next.js 14 web app that turns a caregiver's plain-language trip description in
 3. **zod is the single source of truth.** Add new fields in `src/lib/schemas.ts` first, then update the prompt, the rules and the tests.
 4. **No secrets in code.** Read env vars only in server files (`src/lib/ai.ts`, `src/lib/storage.ts`, API routes). Keep `import "server-only"` there. Never prefix secrets with `NEXT_PUBLIC_`. Update `.env.example` when adding env vars.
 5. **Never trust the client.** `/api/bookings` must recompute `assess()` from the extraction.
-6. **Data minimisation (PH Data Privacy Act):** don't add fields for full names, diagnoses or exact addresses without updating `spec.md §7`.
-7. **Every feature or bugfix needs a test** in `tests/` that maps to an acceptance criterion ID (AC1…AC10) in `spec.md`.
+6. **Compliance:** keep the 20% Senior/PWD discount on the ride fare, the consent box, `/privacy` and `/terms` in line with `docs/03-regulatory-compliance.md`. Never call our vehicles "ambulances".
+7. **Data minimisation (PH Data Privacy Act):** don't add fields for full names, diagnoses or exact addresses without updating `spec.md §7`.
+8. **Every feature or bugfix needs a test** in `tests/` that maps to an acceptance criterion ID (AC1…AC15) in `spec.md`.
 
 ## Code style
 - TypeScript strict; no `any` (use `unknown` + zod parsing).
