@@ -1,11 +1,11 @@
 # CareRide PH ♿🚐
 
-[![CI](https://github.com/FeladelPobre/careride-ph/actions/workflows/ci.yml/badge.svg)](https://github.com/FeladelPobre/careride-ph/actions/workflows/ci.yml)
+[![CI](https://github.com/feladelpobre/care-ride-at-your-service-ph/actions/workflows/ci.yml/badge.svg)](https://github.com/feladelpobre/care-ride-at-your-service-ph/actions/workflows/ci.yml)
 
 **Wheelchair-safe rides to the hospital, planned in one message.**
 A caregiver describes the trip in plain English or Taglish. CareRide's AI turns it into a structured ride plan: the right vehicle, crew size, pickup time, a distance-based price estimate, an optional hospital companion, and a driver brief.
 
-🔗 **Live app:** https://careride-ph.vercel.app · 🎬 **Demo video:** _add link_ · 📄 **Reflection:** [`docs/reflection.md`](docs/reflection.md)
+🔗 **Live app:** https://care-ride-at-your-service-ph.vercel.app · 🎬 **Demo video:** _add link_ · 📄 **Reflection:** [`docs/reflection.md`](docs/reflection.md)
 
 > Built for Week 4 Graded Mini Project 4.2 (AI-Powered Web Application) by Feladel "Peng" Pobre.
 
@@ -50,8 +50,8 @@ Browser → /api/bookings → validate → RECOMPUTE plan on server → Supabase
 
 ## Run locally
 ```bash
-git clone https://github.com/FeladelPobre/careride-ph.git
-cd careride-ph
+git clone https://github.com/feladelpobre/care-ride-at-your-service-ph.git
+cd care-ride-at-your-service-ph
 npm install
 cp .env.example .env.local     # then add your OPENAI_API_KEY
 npm run dev                    # http://localhost:3000
