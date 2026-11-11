@@ -26,3 +26,4 @@ create index if not exists bookings_created_at_idx on public.bookings (created_a
 
 -- RLS on, no policies for anon/authenticated: only the server (service role) can read/write.
 alter table public.bookings enable row level security;
+revoke all on public.bookings from anon, authenticated;
