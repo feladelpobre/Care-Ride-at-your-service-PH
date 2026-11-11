@@ -37,8 +37,8 @@ Caregivers in Metro Manila who arrange hospital and dialysis trips for wheelchai
 | Metric | Target (first 30 days after launch) | How measured |
 |---|---|---|
 | **Extraction accuracy** on a 10-case golden set | ≥ 9/10 cases with correct mobility, floors and time | Manual eval script in `docs/eval-cases.md` |
-| **Companion add-on attach rate** | ≥ 20% of confirmed bookings include a hospital companion | `booking_confirmed` event property `companion` |
-| **Intake-to-confirm conversion** | ≥ 40% of `trip_analyzed` events lead to `booking_confirmed` | Vercel Analytics custom events |
+| **Companion add-on attach rate** | ≥ 20% of confirmed bookings include a hospital companion | Insights panel: share of requests with a companion |
+| **Intake-to-confirm conversion** | ≥ 40% of `trip_analyzed` events lead to `booking_confirmed` | Dispatcher **Insights** panel (events stored in Supabase) |
 | **Time to book** | Median < 2 minutes from first keystroke to confirm | Usability test with 3 caregivers |
 
 ## 6. Open Questions

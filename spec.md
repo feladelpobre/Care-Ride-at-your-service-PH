@@ -1,6 +1,6 @@
 # spec.md — Care Ride at your service-PH
 
-**Version:** 1.3 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
+**Version:** 1.4 (revised after review; see §8) · **Source PRD:** `docs/02-PRD.md` · **Architecture:** `docs/architecture.md`
 
 ---
 
@@ -142,6 +142,7 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | AC13 | Senior/PWD ticked: 20% off the ride fare only (₱1,200 fare → −₱240; wheelchair and companion not discounted); driver checklist includes the ID check | `tests/addons.test.ts` |
 | AC14 | Wheelchair ticked: +₱150 line and "Bring a clean, checked wheelchair" first in the checklist | `tests/addons.test.ts` |
 | AC15 | Step-1 tick boxes reach `/api/plan` (companion ticked → default hours) and `/api/bookings` stores them, recomputing the discount server-side | `tests/addons.test.ts` |
+| AC16 | Insights: 4 plans + 2 requests → 50% conversion, "meets 40% target"; events hold no personal data; no data → "–" | `tests/insights.test.ts` |
 | AC12 | Hospital companion: 3 h = ₱750, 1 h is billed as 2 h, 15 h is capped at 12 h; a WAV with 2 crew, 3 floors and 10 km totals ₱1,800; the server recomputes the companion fee on booking | `tests/rules.test.ts`, `tests/bookings-route.test.ts` |
 
 ---
@@ -161,7 +162,7 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 - Supabase: Row Level Security **enabled with no anon policies**; the server writes with the service-role key; the dispatcher board masks contact names (e.g., "L***").
 - Data minimisation: no full names, diagnoses or exact home addresses are required (pickup *area* only); Senior/PWD stored as a yes/no flag, never the ID number.
 - Consent: the confirm form requires explicit consent that names the health information (mobility needs) and links to `/privacy` (RA 10173) and `/terms` (RA 11967 redress mechanism).
-- Monitoring: Vercel Analytics (page views + `trip_analyzed`, `booking_confirmed`, `emergency_redirect` events); `GET /api/health` returns `{ status, ai, storage }`.
+- Monitoring: Vercel Web Analytics for page views and visitors; funnel events (`trip_analyzed`, `booking_confirmed`, `emergency_redirect`) are recorded server-side in Supabase `app_events` (non-personal flags only) and shown in the **Insights** panel on `/dispatch` (last 30 days, conversion vs the 40% target). Vercel custom events need a Pro plan, so this keeps the funnel free. `GET /api/health` returns `{ status, ai, storage }`.
 - Accessibility: large tap targets (≥ 44 px), labelled inputs, WCAG AA contrast, works at 360 px width.
 - Performance: p95 `/api/plan` < 10 s with `gpt-4o-mini`.
 
@@ -178,6 +179,7 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | 1.1 | Replaced "exact address" with "pickup area"; masked names on the board | Review: Data Privacy Act data-minimisation |
 | 1.2 | Replaced the flat fare with **distance-band pricing** plus an itemised quote; added the nearest-hospital estimate | Stakeholder review (founder): customers want to know the cost from their location to the (nearest) hospital |
 | 1.2 | Added the optional **hospital companion** service (hourly, until the appointment is completed) | Stakeholder review: a second revenue line, and caregivers often cannot stay at the hospital |
+| 1.4 | Funnel events stored in Supabase and shown in a dispatcher **Insights** panel | Vercel custom events are not available on the free Hobby plan |
 | 1.3 | Added step-1 **tick boxes** (wheelchair, hospital companion/caregiver, Senior/PWD) | Stakeholder review: choices must be visible up front, not hidden in the text |
 | 1.3 | Added the statutory **20% Senior/PWD fare discount**, Privacy Notice, Terms and stronger consent | Compliance review against RA 9994, RA 10754, RA 10173, RA 11967, DOH AO 2018-0001 (see `docs/03-regulatory-compliance.md`) |
 | 1.2 | Replaced the `travelMinutes` input with `distanceKm`; travel time is now derived from km | Fewer inputs for caregivers; one number drives both price and pickup time |

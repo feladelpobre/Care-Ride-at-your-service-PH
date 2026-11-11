@@ -77,15 +77,16 @@ Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor, the
 
 ## Tests & CI
 ```bash
-npm test          # 61 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
+npm test          # 64 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
 npm run lint && npm run typecheck && npm run build
 ```
 GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and PR: **gitleaks secret scan → lint → typecheck → tests → build**. Vercel deploys previews for PRs and production from `main`.
 
-Each acceptance criterion in `spec.md` (AC1–AC15) maps to a test file.
+Each acceptance criterion in `spec.md` (AC1–AC16) maps to a test file.
 
 ## Monitoring
-- **Vercel Analytics:** page views + custom events `trip_analyzed`, `booking_confirmed`, `emergency_redirect` (funnel for the PRD success metrics)
+- **Vercel Web Analytics:** visitors, page views, pages, countries, devices
+- **Insights panel** on `/dispatch`: trips planned, ride requests, plan-to-request conversion vs the 40% PRD target, 911 redirects and add-on rates (last 30 days). Events are stored in Supabase with non-personal flags only, because Vercel custom events need a Pro plan
 - **Health check:** `GET /api/health` → `{ status, ai, storage }` (never exposes secret values)
 
 ## Pricing (estimates only, no payments)

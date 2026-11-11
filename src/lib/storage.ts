@@ -2,11 +2,13 @@ import "server-only";
 import { unstable_noStore as noStore } from "next/cache";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Booking } from "./schemas";
+import type { EventName, EventProps } from "./insights";
 
 export type NewBooking = Omit<Booking, "id" | "createdAt" | "status">;
 
 let client: SupabaseClient | null = null;
 const memory: Booking[] = [];
+const memoryEvents: { name: EventName; props: EventProps; createdAt: number }[] = [];
 
 export function storageMode(): "supabase" | "memory" {
   return process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY ? "supabase" : "memory";
@@ -124,4 +126,36 @@ export function maskName(name: string): string {
     .filter(Boolean)
     .map((p) => `${p[0].toUpperCase()}***`)
     .join(" ");
+}
+
+/**
+ * Records a funnel event. Never throws: analytics must not break a booking.
+ * Props must contain only non-personal flags.
+ */
+export async function recordEvent(name: EventName, props: EventProps = {}): Promise<void> {
+  try {
+    if (storageMode() === "memory") {
+      memoryEvents.push({ name, props, createdAt: Date.now() });
+      if (memoryEvents.length > 5000) memoryEvents.splice(0, 1000);
+      return;
+    }
+    const { error } = await db().from("app_events").insert({ name, props });
+    if (error) console.error("events: insert failed", error.code ?? "unknown");
+  } catch {
+    console.error("events: insert threw");
+  }
+}
+
+/** Events from the last `days` days (default 30). */
+export async function listEvents(days = 30): Promise<{ name: EventName; props: EventProps }[]> {
+  noStore();
+  const since = Date.now() - days * 86_400_000;
+  if (storageMode() === "memory") return memoryEvents.filter((e) => e.createdAt >= since);
+  const { data, error } = await db()
+    .from("app_events")
+    .select("name, props")
+    .gte("created_at", new Date(since).toISOString())
+    .limit(10000);
+  if (error) throw new Error(`events list failed: ${error.code ?? "unknown"}`);
+  return data as { name: EventName; props: EventProps }[];
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { bookingRequestSchema } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
-import { saveBooking } from "@/lib/storage";
+import { recordEvent, saveBooking } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -56,6 +56,12 @@ export async function POST(req: Request) {
       fareMax: assessment.fare.max,
       driverBrief: fresh.driverBrief,
       recurring: x.recurring,
+    });
+    await recordEvent("booking_confirmed", {
+      vehicle: assessment.vehicle,
+      companion: assessment.companionHours > 0,
+      wheelchair: fresh.options.wheelchairRental,
+      seniorPwd: fresh.options.seniorPwdDiscount,
     });
     return NextResponse.json({ booking: { id: booking.id, status: booking.status, assessment } }, { status: 201 });
   } catch (err) {

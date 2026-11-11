@@ -4,6 +4,7 @@ import { detectEmergency, EMERGENCY_MESSAGE } from "@/lib/emergency";
 import { AiNotConfiguredError, extractTrip } from "@/lib/ai";
 import { buildPlan } from "@/lib/plan";
 import { clientKey, rateLimit } from "@/lib/rateLimit";
+import { recordEvent } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
 
   // 1) Emergency gate BEFORE the AI (AC2)
   if (detectEmergency(description).emergency) {
+    await recordEvent("emergency_redirect", { source: "keywords" });
     return NextResponse.json({ emergency: true, message: EMERGENCY_MESSAGE });
   }
 
@@ -50,6 +52,7 @@ export async function POST(req: Request) {
   }
 
   if (extraction.emergencySignals) {
+    await recordEvent("emergency_redirect", { source: "ai" });
     return NextResponse.json({ emergency: true, message: EMERGENCY_MESSAGE });
   }
 
@@ -60,6 +63,13 @@ export async function POST(req: Request) {
     companion: addons.companion,
     wheelchairRental: addons.wheelchair,
     seniorPwdDiscount: addons.seniorPwd,
+  });
+  await recordEvent("trip_analyzed", {
+    vehicle: plan.assessment.vehicle,
+    blocked: plan.assessment.blocked,
+    companion: plan.options.companionHours > 0,
+    wheelchair: plan.options.wheelchairRental,
+    seniorPwd: plan.options.seniorPwdDiscount,
   });
   return NextResponse.json(plan);
 }

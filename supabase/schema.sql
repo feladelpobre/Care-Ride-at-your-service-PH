@@ -29,3 +29,15 @@ create index if not exists bookings_created_at_idx on public.bookings (created_a
 -- RLS on, no policies for anon/authenticated: only the server (service role) can read/write.
 alter table public.bookings enable row level security;
 revoke all on public.bookings from anon, authenticated;
+
+-- Funnel events for the PRD success metrics (free alternative to Vercel custom events, which need a Pro plan).
+-- Props hold only non-personal flags (vehicle type, add-ons); never names, phones or descriptions.
+create table if not exists public.app_events (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  name text not null check (name in ('trip_analyzed','booking_confirmed','emergency_redirect')),
+  props jsonb not null default '{}'::jsonb
+);
+create index if not exists app_events_name_created_idx on public.app_events (name, created_at desc);
+alter table public.app_events enable row level security;
+revoke all on public.app_events from anon, authenticated;
