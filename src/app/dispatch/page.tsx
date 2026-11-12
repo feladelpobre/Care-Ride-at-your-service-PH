@@ -37,7 +37,14 @@ export default async function DispatchPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-ube-950">Dispatcher board</h1>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-2xl font-bold text-ube-950">Dispatcher board</h1>
+          <form action="/api/admin/logout" method="post">
+            <button type="submit" className="btn-ghost text-sm">
+              Log out
+            </button>
+          </form>
+        </div>
         <p className="text-sm text-zinc-600">
           Latest 50 ride requests, newest first. Each shows its reference and the date and time it was requested (Manila time).
           Contact names are masked for privacy.
