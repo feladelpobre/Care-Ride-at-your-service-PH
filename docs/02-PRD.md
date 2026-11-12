@@ -34,6 +34,12 @@ Caregivers in Metro Manila who arrange hospital and dialysis trips for wheelchai
 - Storing patient names, diagnoses or medical records (data minimisation under RA 10173)
 - Native mobile apps (responsive web only)
 - SMS one-time code (OTP) verification of the mobile number (v1 uses a required number + 3 requests/day cap; OTP planned for v2)
+- **Booking the hospital or doctor's appointment itself.** The caregiver books the appointment directly with the hospital and enters its date and time; Care Ride plans the ride around it. Reasons:
+  - *No common integration:* most Philippine hospitals have no public booking API; each uses its own portal, phone line or clinic secretary, so every hospital would need a separate arrangement.
+  - *Sync risk:* doctors cancel and clinics move schedules by phone; a stale appointment means a van arriving at the wrong time, and two linked bookings (slot + van) must be reconciled when either fails.
+  - *Sensitive data:* appointment details (doctor, department, diagnosis, HMO/PhilHealth) are sensitive personal information under RA 10173, needing stronger consent, security and possibly NPC registration; v1 deliberately stores no diagnoses.
+  - *Liability and partnerships:* a missed appointment caused by our system becomes a medical consequence, and each hospital would require a data-sharing agreement and security review.
+  - *Roadmap:* v2 adds an optional "appointment confirmed?" tick box and a day-before SMS reminder. We will not build our own hospital scheduling.
 
 ## 5. Success Metrics
 | Metric | Target (first 30 days after launch) | How measured |

@@ -24,6 +24,15 @@ const optionalText = (max: number) =>
     .optional()
     .transform((v) => (v ? v : null));
 
+/** Clock-skew allowance for "when did it happen?" (phones can run a few minutes fast). */
+export const FUTURE_GRACE_MS = 10 * 60_000;
+
+/** Incident must fall between the moment the ride was requested and now (AC19). */
+export function incidentWithinBooking(incidentAt: string | null, bookingCreatedAt: string): boolean {
+  if (incidentAt === null) return true;
+  return Date.parse(incidentAt) >= Date.parse(bookingCreatedAt) - FUTURE_GRACE_MS;
+}
+
 export const feedbackRequestSchema = z.object({
   reference: z
     .string({ required_error: "Enter your booking reference." })
@@ -43,7 +52,8 @@ export const feedbackRequestSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v ? manilaLocalToIso(v) : null))
-    .refine((v) => v === null || !Number.isNaN(Date.parse(v)), "Enter a valid date and time."),
+    .refine((v) => v === null || !Number.isNaN(Date.parse(v)), "Enter a valid date and time.")
+    .refine((v) => v === null || Date.parse(v) <= Date.now() + FUTURE_GRACE_MS, "The date and time can't be in the future. Tell us when it actually happened."),
   driverName: optionalText(60),
   caregiverName: optionalText(60),
   details: optionalText(1000),

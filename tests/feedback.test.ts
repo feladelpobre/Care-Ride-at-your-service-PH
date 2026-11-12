@@ -42,11 +42,24 @@ describe("feedback system (AC19)", () => {
 
   it("marks safety reports urgent, and low ratings or callback requests high", async () => {
     const { reference } = await book("09191110003");
-    const res = await send({ reference, contactPhone: "09191110003", ratingOverall: 2, issueTypes: ["safety", "late"], incidentAt: "2026-11-12T07:30" });
+    const res = await send({ reference, contactPhone: "09191110003", ratingOverall: 2, issueTypes: ["safety", "late"], incidentAt: new Date().toISOString() });
     expect((await res.json()).priority).toBe("urgent");
     expect(feedbackPriority({ issueTypes: [], ratingOverall: 2, wantsCallback: false })).toBe("high");
     expect(feedbackPriority({ issueTypes: [], ratingOverall: 4, wantsCallback: true })).toBe("high");
     expect(feedbackPriority({ issueTypes: ["billing"], ratingOverall: 4, wantsCallback: false })).toBe("normal");
+  });
+
+  it("rejects an incident time in the future or before the ride was booked (AC19)", async () => {
+    const { reference } = await book("09191110005");
+    const future = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const r1 = await send({ reference, contactPhone: "09191110005", ratingOverall: 3, incidentAt: future });
+    expect(r1.status).toBe(400);
+    expect((await r1.json()).error).toMatch(/can't be in the future/);
+    const before = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    const r2 = await send({ reference, contactPhone: "09191110005", ratingOverall: 3, incidentAt: before });
+    expect(r2.status).toBe(400);
+    expect((await r2.json()).error).toMatch(/before this ride was booked/);
+    expect((await send({ reference, contactPhone: "09191110005", ratingOverall: 3, incidentAt: new Date().toISOString() })).status).toBe(201);
   });
 
   it("allows at most 3 feedback forms per booking", async () => {
