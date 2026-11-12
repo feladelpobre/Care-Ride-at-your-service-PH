@@ -10,8 +10,14 @@ vi.mock("@/lib/ai", () => ({
 
 import { POST } from "@/app/api/plan/route";
 
-const call = (body: unknown, ip = "1.1.1.1") =>
-  POST(new Request("http://test/api/plan", { method: "POST", headers: { "x-forwarded-for": ip }, body: JSON.stringify(body) }));
+const call = (body: Record<string, unknown>, ip = "1.1.1.1") =>
+  POST(
+    new Request("http://test/api/plan", {
+      method: "POST",
+      headers: { "x-forwarded-for": ip },
+      body: JSON.stringify({ pickupLocation: "Brgy. San Antonio, Pasig", ...body }),
+    }),
+  );
 
 describe("POST /api/plan", () => {
   beforeEach(() => {
@@ -66,5 +72,25 @@ describe("POST /api/plan", () => {
     for (let i = 0; i < 10; i++) await call({ description: "Wheelchair user going to PGH tomorrow 8am" }, "9.9.9.9");
     const res = await call({ description: "Wheelchair user going to PGH tomorrow 8am" }, "9.9.9.9");
     expect(res.status).toBe(429);
+  });
+
+  it("requires the pickup location, but only after the emergency gate (AC21)", async () => {
+    extractTrip.mockResolvedValue(x());
+    const noPickup = await call({ description: "Wheelchair user going to PGH tomorrow 8am", pickupLocation: "" }, "5.5.5.1");
+    expect(noPickup.status).toBe(400);
+    expect((await noPickup.json()).error).toMatch(/pickup location/);
+    expect(extractTrip).not.toHaveBeenCalled();
+
+    const emergency = await call({ description: "Tatay has chest pain and is very pale right now", pickupLocation: "" }, "5.5.5.2");
+    expect((await emergency.json()).emergency).toBe(true);
+  });
+
+  it("uses the caregiver's pickup field instead of the AI's guess (AC21)", async () => {
+    extractTrip.mockResolvedValue(x({ pickupArea: null, missingInfo: ["pickup area (barangay/city)", "appointment time"] }));
+    const plan = await (
+      await call({ description: "Wheelchair user going to PGH tomorrow 8am", pickupLocation: "  Talon Singko, Las Pinas " }, "5.5.5.3")
+    ).json();
+    expect(plan.extraction.pickupArea).toBe("Talon Singko, Las Pinas");
+    expect(plan.extraction.missingInfo).toEqual(["appointment time"]);
   });
 });

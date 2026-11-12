@@ -24,12 +24,17 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { description, distanceKm, companionHours, addons } = parsed.data;
+  const { description, pickupLocation, distanceKm, companionHours, addons } = parsed.data;
 
   // 1) Emergency gate BEFORE the AI (AC2)
   if (detectEmergency(description).emergency) {
     await recordEvent("emergency_redirect", { source: "keywords" });
     return NextResponse.json({ emergency: true, message: EMERGENCY_MESSAGE });
+  }
+
+  // Pickup location is required (AC21), checked after the emergency gate so 911 always wins
+  if (!pickupLocation || pickupLocation.trim().length < 3) {
+    return NextResponse.json({ error: "Please enter the pickup location (barangay and city)." }, { status: 400 });
   }
 
   // 2) Rate limit to protect the AI budget
@@ -55,6 +60,13 @@ export async function POST(req: Request) {
     await recordEvent("emergency_redirect", { source: "ai" });
     return NextResponse.json({ emergency: true, message: EMERGENCY_MESSAGE });
   }
+
+  // The caregiver's own pickup field wins over the AI's guess (AC21)
+  extraction = {
+    ...extraction,
+    pickupArea: pickupLocation.trim(),
+    missingInfo: extraction.missingInfo.filter((m) => !/pickup/i.test(m)),
+  };
 
   // 4) Deterministic rules: distance, pricing, vehicle, crew, pickup time
   const plan = buildPlan(extraction, {

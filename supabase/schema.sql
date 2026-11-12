@@ -64,3 +64,22 @@ create index if not exists feedback_created_idx on public.feedback (created_at d
 create index if not exists feedback_booking_idx on public.feedback (booking_id);
 alter table public.feedback enable row level security;
 revoke all on public.feedback from anon, authenticated;
+
+-- v1.8: email notifications (AC22, AC23)
+alter table public.bookings
+  add column if not exists contact_email text,
+  add column if not exists confirmation_sent_at timestamptz,
+  add column if not exists reminder_sent_at timestamptz;
+alter table public.bookings drop constraint if exists bookings_contact_email_len;
+alter table public.bookings add constraint bookings_contact_email_len check (contact_email is null or char_length(contact_email) <= 254);
+create index if not exists bookings_reminder_due_idx on public.bookings (appointment_date) where reminder_sent_at is null and contact_email is not null;
+
+-- Reminder scheduler: every 10 minutes, call /api/reminders with the CRON_SECRET kept in Supabase Vault.
+-- (Vercel Hobby cron can only run once a day.) Run once, after `select vault.create_secret('<CRON_SECRET>', 'care_ride_cron_secret');`
+-- create extension if not exists pg_cron; create extension if not exists pg_net;
+-- select cron.schedule('care-ride-reminders', '*/10 * * * *', $$
+--   select net.http_get(
+--     url := 'https://care-ride-at-your-service-ph.vercel.app/api/reminders',
+--     headers := jsonb_build_object('Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'care_ride_cron_secret'))
+--   );
+-- $$);

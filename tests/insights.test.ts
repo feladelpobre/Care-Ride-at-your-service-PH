@@ -46,8 +46,8 @@ describe("funnel insights (AC16)", () => {
   it("records trip_analyzed and emergency_redirect events from /api/plan, without personal data", async () => {
     const before = (await listEvents()).length;
     extractTrip.mockResolvedValue(x());
-    await planPOST(new Request("http://t", { method: "POST", headers: { "x-forwarded-for": "8.8.8.8" }, body: JSON.stringify({ description: "Wheelchair user to PGH tomorrow 8am from Sampaloc" }) }));
-    await planPOST(new Request("http://t", { method: "POST", headers: { "x-forwarded-for": "8.8.8.9" }, body: JSON.stringify({ description: "Tatay has chest pain right now please help" }) }));
+    await planPOST(new Request("http://t", { method: "POST", headers: { "x-forwarded-for": "8.8.8.8" }, body: JSON.stringify({ pickupLocation: "Pasig", description: "Wheelchair user to PGH tomorrow 8am from Sampaloc" }) }));
+    await planPOST(new Request("http://t", { method: "POST", headers: { "x-forwarded-for": "8.8.8.9" }, body: JSON.stringify({ pickupLocation: "Pasig", description: "Tatay has chest pain right now please help" }) }));
     const events = (await listEvents()).slice(before);
     expect(events.map((e) => e.name)).toEqual(["trip_analyzed", "emergency_redirect"]);
     expect(JSON.stringify(events)).not.toMatch(/Sampaloc|PGH|chest/);

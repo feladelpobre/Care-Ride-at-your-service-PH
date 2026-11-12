@@ -23,13 +23,15 @@ Caregivers in Metro Manila who arrange hospital and dialysis trips for wheelchai
 | F8 | **Feedback and complaints:** after the trip, the customer rates the service (overall, driver, caregiver), says if pickup was on time, ticks what went wrong, adds when it happened, the driver/caregiver names and details, and can ask for a callback; gets an FB- ticket; dispatchers see feedback sorted by urgency with the average rating | Feedback with a wrong reference/mobile pair is refused; a "Safety concern" ticket is marked Urgent and listed first; the dispatcher panel shows the average rating. Covered by unit tests (AC19) |
 | F5 | **Review & confirm → dispatcher board:** the caregiver reviews and edits the plan, enters a contact name and a **required mobile number** (for the confirmation call and to deter fake requests; max 3 requests per number per day), then confirms; the booking appears on `/dispatch` with its driver brief and a ₱ fare *estimate* (no payment) | After confirming, the booking is visible on `/dispatch` with status "Pending" and the same vehicle, crew and pickup time shown on the review screen |
 
+| F9 | **Notifications and required details (v1.3, from user trials):** step 1 asks for the pickup location; a request can't be sent until pickup, hospital, appointment date/time and how the patient moves are filled in (missing items listed in red); a required email receives the `CR-` reference right away and a reminder about 2 hours before pickup | A request with mobility "not sure" is refused and names the missing detail; after booking, the confirmation email contains the reference; a booking with pickup in 90 minutes gets exactly one reminder. Covered by unit tests (AC20–AC23) |
+
 *Feature order: F1 → F2 → F3 → F6 → F7 → F4 → F5 (F6 added in v1.1 and F7 in v1.2 after stakeholder and compliance review; see `docs/03-regulatory-compliance.md`).*
 
 ## 4. Out of Scope (v1)
 - Real payments, wallets or insurance/PhilHealth claims
 - Live driver GPS tracking, maps routing and real traffic data (distance is estimated from city and hospital coordinates; caregivers can edit it)
 - Round-trip pricing and waiting-time billing for the van (v2)
-- Driver accounts, matching and acceptance workflow; SMS/Viber notifications
+- Driver accounts, matching and acceptance workflow; SMS/Viber notifications (v1 sends email only; SMS via a local gateway such as Semaphore is planned for v2)
 - Emergency transport of any kind (the app always redirects to 911)
 - Storing patient names, diagnoses or medical records (data minimisation under RA 10173)
 - Native mobile apps (responsive web only)

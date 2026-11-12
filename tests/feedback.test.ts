@@ -7,7 +7,7 @@ import { listFeedback } from "@/lib/storage";
 import { x } from "./fixtures";
 
 const book = async (phone: string) => {
-  const res = await bookPOST(new Request("http://t", { method: "POST", body: JSON.stringify({ contactName: "Liza", contactPhone: phone, plan: buildPlan(x(), { distanceKm: 5 }) }) }));
+  const res = await bookPOST(new Request("http://t", { method: "POST", body: JSON.stringify({ contactName: "Liza", contactEmail: "family@example.com", contactPhone: phone, plan: buildPlan(x(), { distanceKm: 5 }) }) }));
   return (await res.json()).booking as { reference: string };
 };
 let ip = 0;

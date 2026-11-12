@@ -126,6 +126,12 @@ export const planRequestSchema = z.object({
         .min(20, "Please add a bit more detail (at least 20 characters).")
         .max(1500, "That's too long. Please keep it under 1,500 characters."),
     ),
+  /**
+   * Step 1 required field: where the patient is picked up (overrides the AI's guess).
+   * Optional at schema level so an emergency message is still caught first;
+   * /api/plan requires it right after the emergency gate (AC21).
+   */
+  pickupLocation: z.string().transform(sanitizeText).pipe(z.string().max(120)).optional(),
   distanceKm: z.coerce.number().min(0.5).max(150).optional(),
   companionHours: z.coerce.number().int().min(0).max(12).optional(),
   /** Tick boxes in step 1 */
@@ -151,6 +157,12 @@ export const bookingRequestSchema = z.object({
         .min(1, "Please enter a mobile number so we can confirm the ride.")
         .regex(/^09\d{9}$/, "Use a PH mobile number like 0917 123 4567."),
     ),
+  /** Required: the booking confirmation and the 2-hour reminder are sent here (AC22). */
+  contactEmail: z
+    .string({ required_error: "Please enter an email address so we can send your booking reference." })
+    .trim()
+    .toLowerCase()
+    .pipe(z.string().min(1, "Please enter an email address so we can send your booking reference.").max(254).email("Please enter a valid email address, like name@gmail.com.")),
   plan: tripPlanSchema,
 });
 export type BookingRequest = z.infer<typeof bookingRequestSchema>;
@@ -160,6 +172,7 @@ export type Booking = {
   createdAt: string;
   contactName: string;
   contactPhone: string | null;
+  contactEmail: string | null;
   pickupArea: string | null;
   destination: string | null;
   appointmentDate: string | null;

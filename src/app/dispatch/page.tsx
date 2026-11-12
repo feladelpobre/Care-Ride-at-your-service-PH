@@ -1,3 +1,4 @@
+import { maskEmail } from "@/lib/notifications";
 import { listBookingFlags, listBookings, listEvents, listFeedback, maskName, maskPhone, storageMode } from "@/lib/storage";
 import { averageRating, feedbackTicket, ISSUE_TYPES, type FeedbackRecord } from "@/lib/feedback";
 import { bookingReference, formatManilaDateTime } from "@/lib/format";
@@ -66,7 +67,7 @@ export default async function DispatchPage() {
                 </p>
                 <p className="text-sm text-zinc-600">
                   Appointment {b.appointmentDate ?? "date TBC"} · from {b.pickupArea ?? "area TBC"} · {b.distanceKm} km · contact{" "}
-                  {maskName(b.contactName)}, {maskPhone(b.contactPhone)}
+                  {maskName(b.contactName)}, {maskPhone(b.contactPhone)}, {maskEmail(b.contactEmail)}
                 </p>
               </div>
               <div className="lg:shrink-0 lg:text-right">

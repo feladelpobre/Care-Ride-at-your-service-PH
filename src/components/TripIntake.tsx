@@ -8,6 +8,7 @@ import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
 import { formatManilaDateTime } from "@/lib/format";
+import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
 import {
   BASE_FARE,
   COMPANION_MIN_HOURS,
@@ -28,7 +29,7 @@ const MOBILITY_LABEL: Record<TripExtraction["mobility"], string> = {
   wheelchair_can_transfer: "Wheelchair, can transfer to a car seat",
   wheelchair_must_stay_seated: "Wheelchair, must stay seated",
   stretcher_bedbound: "Bedbound / stretcher",
-  unknown: "Not sure",
+  unknown: "Please choose…",
 };
 
 const peso = (n: number) => (n < 0 ? `−₱${Math.abs(n).toLocaleString("en-PH")}` : `₱${n.toLocaleString("en-PH")}`);
@@ -37,6 +38,7 @@ type Emergency = { emergency: true; message: string };
 
 export default function TripIntake() {
   const [description, setDescription] = useState("");
+  const [pickupLocation, setPickupLocation] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
@@ -53,6 +55,8 @@ export default function TripIntake() {
   const [seniorPwd, setSeniorPwd] = useState(false);
 
   const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
   const [contactPhone, setContactPhone] = useState("");
   const [consent, setConsent] = useState(false);
   const [booking, setBooking] = useState<{ id: string; reference: string; requestedAt: string } | null>(null);
@@ -70,6 +74,10 @@ export default function TripIntake() {
     });
   }, [extraction, aiPlan, distanceKm, companionHours, wantWheelchair, seniorPwd]);
 
+  // Required details (AC20): the request button stays off until these are filled
+  const missing: RequiredField[] = extraction ? missingRequiredDetails(extraction) : [];
+  const isMissing = (f: RequiredField) => missing.includes(f);
+
   async function analyse(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -84,6 +92,7 @@ export default function TripIntake() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description,
+          pickupLocation,
           addons: { wheelchair: wantWheelchair, companion: wantCompanion, seniorPwd },
         }),
       });
@@ -122,11 +131,12 @@ export default function TripIntake() {
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contactName, contactPhone, plan }),
+        body: JSON.stringify({ contactName, contactPhone, contactEmail, plan }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save the booking.");
       setBooking(data.booking);
+      setEmailSent(Boolean(data.emailSent));
       track("booking_confirmed", { vehicle: plan.assessment.vehicle, companion: plan.assessment.companionHours > 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the booking.");
@@ -158,6 +168,25 @@ export default function TripIntake() {
         <div id="desc-help" className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
           <span>Include: where from, which hospital, date and time, how the patient moves, stairs, equipment.</span>
           <span>{description.length}/1500</span>
+        </div>
+        <div>
+          <label htmlFor="pickup" className="label">
+            Pickup location <span className="font-normal text-zinc-600">(required)</span>
+          </label>
+          <input
+            id="pickup"
+            className="input"
+            value={pickupLocation}
+            onChange={(e) => setPickupLocation(e.target.value)}
+            maxLength={120}
+            autoComplete="address-level3"
+            placeholder="Barangay and city, e.g., Kapitolyo, Pasig"
+            required
+            aria-describedby="pickup-help"
+          />
+          <p id="pickup-help" className="mt-1 text-sm text-zinc-600">
+            Where should the van pick up the patient? Barangay and city are enough; the driver calls you for the exact address.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {SAMPLES.map((s, i) => (
@@ -228,6 +257,18 @@ export default function TripIntake() {
               <p className="mt-1 text-sm text-zinc-600">{extraction.caregiverSummary}</p>
             </div>
 
+            {missing.length > 0 && (
+              <div role="alert" className="rounded-lg border-2 border-red-500 bg-red-50 p-4 text-sm text-red-900">
+                <strong>Required before you can request this ride:</strong>
+                <ul className="mt-1 list-inside list-disc">
+                  {missing.map((f) => (
+                    <li key={f}>{REQUIRED_LABELS[f]}</li>
+                  ))}
+                </ul>
+                <p className="mt-1">Fill in the fields marked in red below.</p>
+              </div>
+            )}
+
             {extraction.missingInfo.length > 0 && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                 <strong>Please check or add:</strong> {extraction.missingInfo.join(" · ")}
@@ -235,17 +276,18 @@ export default function TripIntake() {
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Pickup area" value={extraction.pickupArea} onChange={(v) => update({ pickupArea: v || null })} />
-              <Field label="Hospital / clinic" value={extraction.destination} onChange={(v) => update({ destination: v || null })} />
-              <Field label="Appointment date" type="date" value={extraction.appointmentDate} onChange={(v) => update({ appointmentDate: v || null })} />
-              <Field label="Appointment time" type="time" value={extraction.appointmentTime} onChange={(v) => update({ appointmentTime: v || null })} />
+              <Field label="Pickup area" invalid={isMissing("pickupArea")} value={extraction.pickupArea} onChange={(v) => update({ pickupArea: v || null })} />
+              <Field label="Hospital / clinic" invalid={isMissing("destination")} value={extraction.destination} onChange={(v) => update({ destination: v || null })} />
+              <Field label="Appointment date" type="date" invalid={isMissing("appointmentDate")} value={extraction.appointmentDate} onChange={(v) => update({ appointmentDate: v || null })} />
+              <Field label="Appointment time" type="time" invalid={isMissing("appointmentTime")} value={extraction.appointmentTime} onChange={(v) => update({ appointmentTime: v || null })} />
               <div>
                 <label htmlFor="mobility" className="label">
-                  How the patient moves
+                  How the patient moves{isMissing("mobility") && <span className="font-bold text-red-700"> · required</span>}
                 </label>
                 <select
                   id="mobility"
-                  className="input"
+                  className={isMissing("mobility") ? "input border-2 border-red-500" : "input"}
+                  aria-invalid={isMissing("mobility") || undefined}
                   value={extraction.mobility}
                   onChange={(e) => update({ mobility: e.target.value as TripExtraction["mobility"] })}
                 >
@@ -484,6 +526,16 @@ export default function TripIntake() {
                     </Link>
                     .
                   </p>
+                  <p className="mt-2 text-sm">
+                    {emailSent ? (
+                      <>
+                        We emailed the reference and trip details to <strong>{contactEmail.trim().toLowerCase()}</strong>, and we&apos;ll
+                        email a reminder about 2 hours before pickup. Please check your spam folder too.
+                      </>
+                    ) : (
+                      <>We couldn&apos;t send the confirmation email right now, so please take a screenshot of this reference.</>
+                    )}
+                  </p>
                 </div>
               ) : (
                 <form onSubmit={confirm} className="grid gap-4 sm:grid-cols-2">
@@ -513,11 +565,32 @@ export default function TripIntake() {
                       Required. We call this number to confirm before any van is sent.
                     </p>
                   </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="cemail" className="label">
+                      Email address
+                    </label>
+                    <input
+                      id="cemail"
+                      className="input"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      placeholder="name@gmail.com"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      required
+                      maxLength={254}
+                      aria-describedby="cemail-help"
+                    />
+                    <p id="cemail-help" className="mt-1 text-sm text-zinc-600">
+                      Required. We email your booking reference right away and a reminder about 2 hours before pickup.
+                    </p>
+                  </div>
                   <label className="flex items-start gap-3 text-sm text-zinc-700 sm:col-span-2">
                     <input type="checkbox" className="mt-1 h-5 w-5 accent-ube-800" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
                     <span>
                       I consent to Care Ride processing these trip details, including the patient&apos;s mobility needs (health
-                      information), only to arrange and carry out this ride, as described in the{" "}
+                      information) and my email address, only to arrange and carry out this ride and send its confirmation and reminder, as described in the{" "}
                       <Link href="/privacy" className="font-medium text-ube-800 underline">
                         Privacy Notice
                       </Link>
@@ -528,7 +601,23 @@ export default function TripIntake() {
                       . I didn&apos;t include diagnoses or other medical details that aren&apos;t needed.
                     </span>
                   </label>
-                  <button type="submit" className="btn-primary sm:col-span-2" disabled={saving || !consent || contactName.trim().length < 2 || !isPhMobile(contactPhone)}>
+                  {missing.length > 0 && (
+                    <p role="status" className="text-sm font-medium text-red-800 sm:col-span-2">
+                      Add the missing details in step 2 first: {missing.map((f) => REQUIRED_LABELS[f]).join(", ")}.
+                    </p>
+                  )}
+                  <button
+                    type="submit"
+                    className="btn-primary sm:col-span-2"
+                    disabled={
+                      saving ||
+                      missing.length > 0 ||
+                      !consent ||
+                      contactName.trim().length < 2 ||
+                      !isPhMobile(contactPhone) ||
+                      !isEmail(contactEmail)
+                    }
+                  >
                     {saving ? "Sending…" : `Request this ride · ${peso(plan.assessment.quote.total)} est.`}
                   </button>
                 </form>
@@ -572,14 +661,22 @@ function Tick(props: { checked: boolean; onChange: (v: boolean) => void; title: 
   );
 }
 
-function Field(props: { label: string; value: string | null; onChange: (v: string) => void; type?: string }) {
+function Field(props: { label: string; value: string | null; onChange: (v: string) => void; type?: string; invalid?: boolean }) {
   const id = props.label.toLowerCase().replace(/[^a-z]+/g, "-");
   return (
     <div>
       <label htmlFor={id} className="label">
         {props.label}
+        {props.invalid && <span className="font-bold text-red-700"> · required</span>}
       </label>
-      <input id={id} type={props.type ?? "text"} className="input" value={props.value ?? ""} onChange={(e) => props.onChange(e.target.value)} />
+      <input
+        id={id}
+        type={props.type ?? "text"}
+        className={props.invalid ? "input border-2 border-red-500" : "input"}
+        aria-invalid={props.invalid || undefined}
+        value={props.value ?? ""}
+        onChange={(e) => props.onChange(e.target.value)}
+      />
     </div>
   );
 }
@@ -592,4 +689,9 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
       <div className="mt-1 text-xs text-zinc-600">{sub}</div>
     </div>
   );
+}
+
+/** Light client-side check; the server validates properly (AC22). */
+function isEmail(v: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }

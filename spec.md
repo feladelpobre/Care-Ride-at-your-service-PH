@@ -36,7 +36,10 @@ In scope: PRD features F1–F7. Regulatory mapping: `docs/03-regulatory-complian
 - `plan` is re-validated against the `TripPlan` schema, and the **server recomputes the assessment** from `plan.extraction`. Client-supplied vehicle, crew or fare values are never trusted.
 
 ### 2.3 Environment (server-only)
-`OPENAI_API_KEY` (required for AI), `OPENAI_MODEL` (default `gpt-4o-mini`), `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (optional; without them an in-memory store is used).
+`OPENAI_API_KEY` (required for AI), `OPENAI_MODEL` (default `gpt-4o-mini`), `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (optional; without them an in-memory store is used). Email: `SMTP_HOST` (default `smtp.gmail.com`), `SMTP_PORT` (default 465), `SMTP_USER`, `SMTP_PASS` (a Gmail **app password**, never the account password), `MAIL_FROM`; without `SMTP_USER`/`SMTP_PASS` emails are skipped and the booking still succeeds. `CRON_SECRET` protects `/api/reminders`.
+
+### 2.4 `GET|POST /api/reminders` (scheduled)
+Called every 10 minutes by a Supabase `pg_cron` job (Vercel Hobby cron can only run once a day) with `Authorization: Bearer <CRON_SECRET>`. Emails each pending booking whose pickup (appointment date + pickup time, Manila) is within the next 2 hours, once (`reminder_sent_at`).
 
 ---
 
@@ -144,6 +147,10 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | AC14 | Wheelchair ticked: +₱150 line and "Bring a clean, checked wheelchair" first in the checklist | `tests/addons.test.ts` |
 | AC15 | Step-1 tick boxes reach `/api/plan` (companion ticked → default hours) and `/api/bookings` stores them, recomputing the discount server-side | `tests/addons.test.ts` |
 | AC19 | Feedback at `/feedback`: needs a matching booking reference + mobile number (else 404); returns an `FB-` ticket; safety → urgent, ≤2 stars or callback → high; max 3 per booking; incident time can't be in the future or before the ride was requested (400); shown on `/dispatch` with ratings, issue types, incident time, driver/caregiver names | `tests/feedback.test.ts` |
+| AC20 | A ride request needs pickup area, hospital/clinic, appointment date, appointment time and how the patient moves ("unknown" doesn't count). Missing ones are listed in red in step 2, their fields are marked, and the request button stays off; the server also refuses (400) and names them | `tests/required.test.ts` |
+| AC21 | Step 1 has a required **Pickup location** field; it replaces the AI's guess for `pickupArea`; an empty field returns 400 "Please enter the pickup location", but only *after* the emergency gate (an emergency message still gets 911) | `tests/plan-route.test.ts` |
+| AC22 | A booking needs a valid **email** (400 otherwise, saved lower-case); right after saving, a confirmation email with the `CR-` reference, trip details and the 911 note is sent; if email fails the booking is still saved and the page asks for a screenshot; the dispatcher shows the email masked (`gi***@gmail.com`) | `tests/notifications.test.ts` |
+| AC23 | `/api/reminders` refuses calls without the cron secret (401); emails a reminder when pickup is within the next 2 hours (not before, not after pickup), and only once per booking | `tests/notifications.test.ts` |
 | AC18 | Booking without a mobile number (or empty) → 400 "Please enter a mobile number…"; the 4th request from the same number within 24 h → 429; dispatcher shows the number masked (0917 *** 4567) | `tests/bookings-route.test.ts`, `tests/validation.test.ts` |
 | AC17 | Every confirmed request gets a reference (`CR-` + 8 characters) and its request date/time; both appear on the confirmation and on the dispatcher card (Manila time) | `tests/bookings-route.test.ts` |
 | AC16 | Insights: 4 plans + 2 requests → 50% conversion, "meets 40% target"; events hold no personal data; no data → "–" | `tests/insights.test.ts` |
@@ -183,6 +190,8 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | 1.1 | Replaced "exact address" with "pickup area"; masked names on the board | Review: Data Privacy Act data-minimisation |
 | 1.2 | Replaced the flat fare with **distance-band pricing** plus an itemised quote; added the nearest-hospital estimate | Stakeholder review (founder): customers want to know the cost from their location to the (nearest) hospital |
 | 1.2 | Added the optional **hospital companion** service (hourly, until the appointment is completed) | Stakeholder review: a second revenue line, and caregivers often cannot stay at the hospital |
+| 1.8 | Required **pickup location** field in step 1; required details (pickup, hospital, date, time, mobility) block the request and are listed in red | User trial (4 testers): 2 didn't say how the patient moves, and the app silently chose the costliest van |
+| 1.8 | Required **email**: confirmation with the `CR-` reference, and a reminder 2 hours before pickup (Supabase `pg_cron`, since Vercel Hobby cron is daily only) | User trial: a tester asked how she would know her request went through; no notification was sent |
 | 1.7 | **Feedback system**: ratings (overall, driver, caregiver), on-time, issue types, incident date/time, driver/caregiver names, details, callback; urgent triage; dispatcher panel with average rating | Stakeholder review: customers need a way to rate service and report problems (also RA 11967 redress) |
 | 1.6 | Mobile number made **required**; max 3 requests per number per 24 h; masked number on the dispatcher board | Stakeholder review: prevent fraudulent/fake requests and allow a confirmation call |
 | 1.5 | Request date/time and `CR-` reference shown on confirmation and dispatcher cards | Stakeholder review: applications must be traceable by date |
