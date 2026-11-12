@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
@@ -34,11 +35,19 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Wordmark />
             </Link>
             <div className="flex shrink-0 gap-1 text-[15px] font-bold">
-              <Link href="/" className="rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50">
+              <Link href="/" className="hidden rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50 sm:inline-block">
                 Book a ride
               </Link>
               <Link href="/feedback" className="rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50">
                 Feedback
+              </Link>
+              <Link
+                href="/dispatch"
+                className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50"
+                title="Staff only: log in to see the dispatcher board"
+              >
+                <Lock aria-hidden size={14} />
+                Dispatcher
               </Link>
             </div>
           </nav>
