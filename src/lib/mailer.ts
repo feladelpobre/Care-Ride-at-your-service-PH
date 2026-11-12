@@ -36,8 +36,9 @@ export async function sendMail(mail: Mail): Promise<boolean> {
     });
     return true;
   } catch (err) {
-    // Log the error type only, never the address or message body
-    console.error("mail: send failed", err instanceof Error ? err.name : "unknown");
+    // Log the error type and SMTP code only, never the address, password or message body
+    const e = err as { name?: string; code?: string; responseCode?: number; command?: string };
+    console.error("mail: send failed", e?.name ?? "unknown", e?.code ?? "-", e?.responseCode ?? "-", e?.command ?? "-");
     return false;
   }
 }
