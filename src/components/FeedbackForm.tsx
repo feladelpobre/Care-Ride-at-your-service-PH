@@ -157,7 +157,15 @@ export default function FeedbackForm({ initialReference }: { initialReference: s
             <label htmlFor="when" className="label">
               When did it happen?
             </label>
-            <input id="when" type="datetime-local" className="input" value={incidentAt} onChange={(e) => setIncidentAt(e.target.value)} />
+            <input
+              id="when"
+              type="datetime-local"
+              className="input"
+              max={manilaNowLocal()}
+              suppressHydrationWarning
+              value={incidentAt}
+              onChange={(e) => setIncidentAt(e.target.value)}
+            />
           </div>
           <div className="hidden sm:block" />
           <div>
@@ -240,4 +248,9 @@ function Stars({ label, value, onChange, required }: { label: string; value: num
       </div>
     </div>
   );
+}
+
+/** Current Philippine time as "YYYY-MM-DDTHH:mm" for the datetime-local max (no future incidents). */
+function manilaNowLocal(): string {
+  return new Date(Date.now() + 8 * 3_600_000).toISOString().slice(0, 16);
 }

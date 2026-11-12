@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { feedbackPriority, feedbackRequestSchema, feedbackTicket } from "@/lib/feedback";
+import { feedbackPriority, feedbackRequestSchema, feedbackTicket, incidentWithinBooking } from "@/lib/feedback";
 import { countFeedbackForBooking, findBookingForFeedback, recordEvent, saveFeedback } from "@/lib/storage";
 import { clientKey, rateLimit } from "@/lib/rateLimit";
 
@@ -35,6 +35,12 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "We couldn't find a booking with that reference and mobile number. Please check both and try again." },
         { status: 404 },
+      );
+    }
+    if (!incidentWithinBooking(feedback.incidentAt, booking.createdAt)) {
+      return NextResponse.json(
+        { error: "That date and time is before this ride was booked. Please check when it happened." },
+        { status: 400 },
       );
     }
     if ((await countFeedbackForBooking(booking.id)) >= MAX_FEEDBACK_PER_BOOKING) {
