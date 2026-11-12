@@ -49,7 +49,7 @@
 4. **Normalisation** → `normalizeExtraction()` clamps numbers, checks the `HH:mm` / `YYYY-MM-DD` formats, and adds missing-info hints.
 5. **Distance & rules** → `estimateRoute()` estimates km (or picks the nearest hospital); `assess()` makes the deterministic decisions and `priceQuote()` builds the itemised estimate (distance band + crew + stairs + optional hospital companion); `buildDriverBrief()` builds the crew checklist. The UI calls the same pure `buildPlan()` to re-price instantly when the caregiver edits km or companion hours.
 6. **Confirm** → `/api/bookings` re-validates, recomputes `assess()` server-side, and stores a minimal record.
-7. **Dispatch** → `/dispatch` (admin login checked in `src/middleware.ts` before the page runs) reads the latest 50 bookings, with names, numbers and emails masked.
+7. **Dispatch** → `/dispatch` (staff log in at `/admin/login`; a signed 12-hour session cookie is checked in `src/middleware.ts` before the page runs) reads the latest 50 bookings, with names, numbers and emails masked.
 
 ## 4. Module Map
 ```
