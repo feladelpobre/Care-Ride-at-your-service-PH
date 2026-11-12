@@ -32,6 +32,9 @@ type Row = {
   created_at: string;
   contact_name: string;
   contact_phone: string | null;
+  contact_email: string | null;
+  confirmation_sent_at?: string | null;
+  reminder_sent_at?: string | null;
   pickup_area: string | null;
   destination: string | null;
   appointment_date: string | null;
@@ -57,6 +60,7 @@ const fromRow = (r: Row): Booking => ({
   createdAt: r.created_at,
   contactName: r.contact_name,
   contactPhone: r.contact_phone,
+  contactEmail: r.contact_email ?? null,
   pickupArea: r.pickup_area,
   destination: r.destination,
   appointmentDate: r.appointment_date,
@@ -89,6 +93,7 @@ export async function saveBooking(b: NewBooking): Promise<Booking> {
     .insert({
       contact_name: b.contactName,
       contact_phone: b.contactPhone,
+      contact_email: b.contactEmail,
       pickup_area: b.pickupArea,
       destination: b.destination,
       appointment_date: b.appointmentDate,
@@ -111,6 +116,41 @@ export async function saveBooking(b: NewBooking): Promise<Booking> {
     .single();
   if (error) throw new Error(`storage insert failed: ${error.code ?? "unknown"}`);
   return fromRow(data as Row);
+}
+
+/** Notification bookkeeping: mark the confirmation or reminder as sent. */
+export async function markNotified(id: string, kind: "confirmation" | "reminder"): Promise<void> {
+  const at = new Date().toISOString();
+  if (storageMode() === "memory") {
+    const b = memory.find((m) => m.id === id) as (Booking & { reminderSentAt?: string }) | undefined;
+    if (b && kind === "reminder") b.reminderSentAt = at;
+    return;
+  }
+  const column = kind === "confirmation" ? "confirmation_sent_at" : "reminder_sent_at";
+  const { error } = await db().from("bookings").update({ [column]: at }).eq("id", id);
+  if (error) throw new Error(`storage update failed: ${error.code ?? "unknown"}`);
+}
+
+/** Pending bookings with an email whose reminder hasn't been sent, for today and tomorrow (Manila). */
+export async function listReminderCandidates(now = Date.now()): Promise<Booking[]> {
+  noStore();
+  const manilaDay = (t: number) => new Date(t + 8 * 3_600_000).toISOString().slice(0, 10);
+  const days = [manilaDay(now), manilaDay(now + 3 * 3_600_000)];
+  if (storageMode() === "memory") {
+    return memory.filter(
+      (b) => b.contactEmail && b.status === "pending" && days.includes(b.appointmentDate ?? "") && !(b as { reminderSentAt?: string }).reminderSentAt,
+    );
+  }
+  const { data, error } = await db()
+    .from("bookings")
+    .select("*")
+    .in("appointment_date", days)
+    .eq("status", "pending")
+    .is("reminder_sent_at", null)
+    .not("contact_email", "is", null)
+    .limit(200);
+  if (error) throw new Error(`storage list failed: ${error.code ?? "unknown"}`);
+  return (data as Row[]).map(fromRow);
 }
 
 /** Anti-fraud: how many requests this mobile number made in the last `hours` hours. */

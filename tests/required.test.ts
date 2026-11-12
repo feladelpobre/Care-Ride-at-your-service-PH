@@ -22,7 +22,7 @@ describe("required ride details (AC20)", () => {
   });
 
   it("the server refuses a request with unknown mobility and names what is missing (400)", async () => {
-    const res = await call({ contactName: "Jean", contactPhone: "09170002020", plan: buildPlan(x({ mobility: "unknown" }), { distanceKm: 10 }) });
+    const res = await call({ contactName: "Jean", contactEmail: "family@example.com", contactPhone: "09170002020", plan: buildPlan(x({ mobility: "unknown" }), { distanceKm: 10 }) });
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.missing).toEqual(["mobility"]);
@@ -30,13 +30,13 @@ describe("required ride details (AC20)", () => {
   });
 
   it("the server refuses a request with no appointment time (400)", async () => {
-    const res = await call({ contactName: "Gina", contactPhone: "09170002021", plan: buildPlan(x({ appointmentTime: null }), { distanceKm: 10 }) });
+    const res = await call({ contactName: "Gina", contactEmail: "family@example.com", contactPhone: "09170002021", plan: buildPlan(x({ appointmentTime: null }), { distanceKm: 10 }) });
     expect(res.status).toBe(400);
     expect((await res.json()).missing).toEqual(["appointmentTime"]);
   });
 
   it("a complete request still goes through (201)", async () => {
-    const res = await call({ contactName: "Jessan", contactPhone: "09170002022", plan: buildPlan(x(), { distanceKm: 10 }) });
+    const res = await call({ contactName: "Jessan", contactEmail: "family@example.com", contactPhone: "09170002022", plan: buildPlan(x(), { distanceKm: 10 }) });
     expect(res.status).toBe(201);
   });
 });

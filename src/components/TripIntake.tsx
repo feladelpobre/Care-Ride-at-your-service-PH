@@ -38,6 +38,7 @@ type Emergency = { emergency: true; message: string };
 
 export default function TripIntake() {
   const [description, setDescription] = useState("");
+  const [pickupLocation, setPickupLocation] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
@@ -54,6 +55,8 @@ export default function TripIntake() {
   const [seniorPwd, setSeniorPwd] = useState(false);
 
   const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
   const [contactPhone, setContactPhone] = useState("");
   const [consent, setConsent] = useState(false);
   const [booking, setBooking] = useState<{ id: string; reference: string; requestedAt: string } | null>(null);
@@ -89,6 +92,7 @@ export default function TripIntake() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description,
+          pickupLocation,
           addons: { wheelchair: wantWheelchair, companion: wantCompanion, seniorPwd },
         }),
       });
@@ -127,11 +131,12 @@ export default function TripIntake() {
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contactName, contactPhone, plan }),
+        body: JSON.stringify({ contactName, contactPhone, contactEmail, plan }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not save the booking.");
       setBooking(data.booking);
+      setEmailSent(Boolean(data.emailSent));
       track("booking_confirmed", { vehicle: plan.assessment.vehicle, companion: plan.assessment.companionHours > 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the booking.");
@@ -163,6 +168,25 @@ export default function TripIntake() {
         <div id="desc-help" className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
           <span>Include: where from, which hospital, date and time, how the patient moves, stairs, equipment.</span>
           <span>{description.length}/1500</span>
+        </div>
+        <div>
+          <label htmlFor="pickup" className="label">
+            Pickup location <span className="font-normal text-zinc-600">(required)</span>
+          </label>
+          <input
+            id="pickup"
+            className="input"
+            value={pickupLocation}
+            onChange={(e) => setPickupLocation(e.target.value)}
+            maxLength={120}
+            autoComplete="address-level3"
+            placeholder="Barangay and city, e.g., Kapitolyo, Pasig"
+            required
+            aria-describedby="pickup-help"
+          />
+          <p id="pickup-help" className="mt-1 text-sm text-zinc-600">
+            Where should the van pick up the patient? Barangay and city are enough; the driver calls you for the exact address.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {SAMPLES.map((s, i) => (
@@ -502,6 +526,16 @@ export default function TripIntake() {
                     </Link>
                     .
                   </p>
+                  <p className="mt-2 text-sm">
+                    {emailSent ? (
+                      <>
+                        We emailed the reference and trip details to <strong>{contactEmail.trim().toLowerCase()}</strong>, and we&apos;ll
+                        email a reminder about 2 hours before pickup. Please check your spam folder too.
+                      </>
+                    ) : (
+                      <>We couldn&apos;t send the confirmation email right now, so please take a screenshot of this reference.</>
+                    )}
+                  </p>
                 </div>
               ) : (
                 <form onSubmit={confirm} className="grid gap-4 sm:grid-cols-2">
@@ -531,11 +565,32 @@ export default function TripIntake() {
                       Required. We call this number to confirm before any van is sent.
                     </p>
                   </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="cemail" className="label">
+                      Email address
+                    </label>
+                    <input
+                      id="cemail"
+                      className="input"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      placeholder="name@gmail.com"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      required
+                      maxLength={254}
+                      aria-describedby="cemail-help"
+                    />
+                    <p id="cemail-help" className="mt-1 text-sm text-zinc-600">
+                      Required. We email your booking reference right away and a reminder about 2 hours before pickup.
+                    </p>
+                  </div>
                   <label className="flex items-start gap-3 text-sm text-zinc-700 sm:col-span-2">
                     <input type="checkbox" className="mt-1 h-5 w-5 accent-ube-800" checked={consent} onChange={(e) => setConsent(e.target.checked)} required />
                     <span>
                       I consent to Care Ride processing these trip details, including the patient&apos;s mobility needs (health
-                      information), only to arrange and carry out this ride, as described in the{" "}
+                      information) and my email address, only to arrange and carry out this ride and send its confirmation and reminder, as described in the{" "}
                       <Link href="/privacy" className="font-medium text-ube-800 underline">
                         Privacy Notice
                       </Link>
@@ -554,7 +609,14 @@ export default function TripIntake() {
                   <button
                     type="submit"
                     className="btn-primary sm:col-span-2"
-                    disabled={saving || missing.length > 0 || !consent || contactName.trim().length < 2 || !isPhMobile(contactPhone)}
+                    disabled={
+                      saving ||
+                      missing.length > 0 ||
+                      !consent ||
+                      contactName.trim().length < 2 ||
+                      !isPhMobile(contactPhone) ||
+                      !isEmail(contactEmail)
+                    }
                   >
                     {saving ? "Sending…" : `Request this ride · ${peso(plan.assessment.quote.total)} est.`}
                   </button>
@@ -627,4 +689,9 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
       <div className="mt-1 text-xs text-zinc-600">{sub}</div>
     </div>
   );
+}
+
+/** Light client-side check; the server validates properly (AC22). */
+function isEmail(v: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }

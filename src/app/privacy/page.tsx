@@ -32,6 +32,10 @@ export default function PrivacyPage() {
             Your name and <strong>mobile number</strong> (required). We use the number only to confirm each request by phone before a
             van is sent, and to prevent fake bookings. Dispatch screens show it partly hidden (e.g. 0917 *** 4567).
           </li>
+          <li>
+            Your <strong>email address</strong> (required). We use it only to send your booking reference and trip details, and one
+            reminder about 2 hours before pickup. No newsletters or marketing. Dispatch screens show it partly hidden (e.g. ma***@gmail.com).
+          </li>
           <li>Pickup <strong>area</strong> (barangay/city), hospital, appointment date and time. We do not ask for a full home address.</li>
           <li>
             The patient&apos;s <strong>mobility needs</strong> (for example: uses a wheelchair, number of stairs, oxygen tank).

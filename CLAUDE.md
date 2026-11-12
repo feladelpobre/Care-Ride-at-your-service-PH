@@ -19,7 +19,8 @@ A Next.js 14 web app that turns a caregiver's plain-language trip description in
 5. **Never trust the client.** `/api/bookings` must recompute `assess()` from the extraction.
 6. **Compliance:** keep the 20% Senior/PWD discount on the ride fare, the consent box, `/privacy` and `/terms` in line with `docs/03-regulatory-compliance.md`. Never call our vehicles "ambulances".
 7. **Data minimisation (PH Data Privacy Act):** don't add fields for full names, diagnoses or exact addresses without updating `spec.md §7`.
-8. **Every feature or bugfix needs a test** in `tests/` that maps to an acceptance criterion ID (AC1…AC15) in `spec.md`.
+8. **Every feature or bugfix needs a test** in `tests/` that maps to an acceptance criterion ID (AC1…AC23) in `spec.md`.
+9. **Notifications never block a booking.** `sendMail()` never throws; log the error type only, never the address or body. Email addresses are shown masked on screens.
 
 ## Code style
 - TypeScript strict; no `any` (use `unknown` + zod parsing).

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { bookingRequestSchema } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
-import { countRecentBookingsByPhone, recordEvent, saveBooking } from "@/lib/storage";
+import { countRecentBookingsByPhone, markNotified, recordEvent, saveBooking } from "@/lib/storage";
+import { sendMail } from "@/lib/mailer";
+import { confirmationEmail } from "@/lib/notifications";
 import { bookingReference } from "@/lib/format";
 import { missingDetailsMessage, missingRequiredDetails } from "@/lib/required";
 
@@ -24,7 +26,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { contactName, contactPhone, plan } = parsed.data;
+  const { contactName, contactPhone, contactEmail, plan } = parsed.data;
 
   // Never trust client-sent assessment: recompute (AC8)
   const x = plan.extraction;
@@ -62,6 +64,7 @@ export async function POST(req: Request) {
     const booking = await saveBooking({
       contactName,
       contactPhone,
+      contactEmail,
       pickupArea: x.pickupArea,
       destination: x.destination,
       appointmentDate: x.appointmentDate,
@@ -86,8 +89,14 @@ export async function POST(req: Request) {
       wheelchair: fresh.options.wheelchairRental,
       seniorPwd: fresh.options.seniorPwdDiscount,
     });
+    // Confirmation email with the reference (AC22); a mail failure never loses the booking
+    const mail = confirmationEmail(booking);
+    const emailSent = await sendMail({ to: contactEmail, ...mail });
+    if (emailSent) await markNotified(booking.id, "confirmation").catch(() => undefined);
+
     return NextResponse.json(
       {
+        emailSent,
         booking: {
           id: booking.id,
           reference: bookingReference(booking.id),
