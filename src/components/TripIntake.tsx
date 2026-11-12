@@ -8,6 +8,7 @@ import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
 import { formatManilaDateTime } from "@/lib/format";
+import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
 import {
   BASE_FARE,
   COMPANION_MIN_HOURS,
@@ -28,7 +29,7 @@ const MOBILITY_LABEL: Record<TripExtraction["mobility"], string> = {
   wheelchair_can_transfer: "Wheelchair, can transfer to a car seat",
   wheelchair_must_stay_seated: "Wheelchair, must stay seated",
   stretcher_bedbound: "Bedbound / stretcher",
-  unknown: "Not sure",
+  unknown: "Please choose…",
 };
 
 const peso = (n: number) => (n < 0 ? `−₱${Math.abs(n).toLocaleString("en-PH")}` : `₱${n.toLocaleString("en-PH")}`);
@@ -69,6 +70,10 @@ export default function TripIntake() {
       seniorPwdDiscount: seniorPwd,
     });
   }, [extraction, aiPlan, distanceKm, companionHours, wantWheelchair, seniorPwd]);
+
+  // Required details (AC20): the request button stays off until these are filled
+  const missing: RequiredField[] = extraction ? missingRequiredDetails(extraction) : [];
+  const isMissing = (f: RequiredField) => missing.includes(f);
 
   async function analyse(e: React.FormEvent) {
     e.preventDefault();
@@ -228,6 +233,18 @@ export default function TripIntake() {
               <p className="mt-1 text-sm text-zinc-600">{extraction.caregiverSummary}</p>
             </div>
 
+            {missing.length > 0 && (
+              <div role="alert" className="rounded-lg border-2 border-red-500 bg-red-50 p-4 text-sm text-red-900">
+                <strong>Required before you can request this ride:</strong>
+                <ul className="mt-1 list-inside list-disc">
+                  {missing.map((f) => (
+                    <li key={f}>{REQUIRED_LABELS[f]}</li>
+                  ))}
+                </ul>
+                <p className="mt-1">Fill in the fields marked in red below.</p>
+              </div>
+            )}
+
             {extraction.missingInfo.length > 0 && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                 <strong>Please check or add:</strong> {extraction.missingInfo.join(" · ")}
@@ -235,17 +252,18 @@ export default function TripIntake() {
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Pickup area" value={extraction.pickupArea} onChange={(v) => update({ pickupArea: v || null })} />
-              <Field label="Hospital / clinic" value={extraction.destination} onChange={(v) => update({ destination: v || null })} />
-              <Field label="Appointment date" type="date" value={extraction.appointmentDate} onChange={(v) => update({ appointmentDate: v || null })} />
-              <Field label="Appointment time" type="time" value={extraction.appointmentTime} onChange={(v) => update({ appointmentTime: v || null })} />
+              <Field label="Pickup area" invalid={isMissing("pickupArea")} value={extraction.pickupArea} onChange={(v) => update({ pickupArea: v || null })} />
+              <Field label="Hospital / clinic" invalid={isMissing("destination")} value={extraction.destination} onChange={(v) => update({ destination: v || null })} />
+              <Field label="Appointment date" type="date" invalid={isMissing("appointmentDate")} value={extraction.appointmentDate} onChange={(v) => update({ appointmentDate: v || null })} />
+              <Field label="Appointment time" type="time" invalid={isMissing("appointmentTime")} value={extraction.appointmentTime} onChange={(v) => update({ appointmentTime: v || null })} />
               <div>
                 <label htmlFor="mobility" className="label">
-                  How the patient moves
+                  How the patient moves{isMissing("mobility") && <span className="font-bold text-red-700"> · required</span>}
                 </label>
                 <select
                   id="mobility"
-                  className="input"
+                  className={isMissing("mobility") ? "input border-2 border-red-500" : "input"}
+                  aria-invalid={isMissing("mobility") || undefined}
                   value={extraction.mobility}
                   onChange={(e) => update({ mobility: e.target.value as TripExtraction["mobility"] })}
                 >
@@ -528,7 +546,16 @@ export default function TripIntake() {
                       . I didn&apos;t include diagnoses or other medical details that aren&apos;t needed.
                     </span>
                   </label>
-                  <button type="submit" className="btn-primary sm:col-span-2" disabled={saving || !consent || contactName.trim().length < 2 || !isPhMobile(contactPhone)}>
+                  {missing.length > 0 && (
+                    <p role="status" className="text-sm font-medium text-red-800 sm:col-span-2">
+                      Add the missing details in step 2 first: {missing.map((f) => REQUIRED_LABELS[f]).join(", ")}.
+                    </p>
+                  )}
+                  <button
+                    type="submit"
+                    className="btn-primary sm:col-span-2"
+                    disabled={saving || missing.length > 0 || !consent || contactName.trim().length < 2 || !isPhMobile(contactPhone)}
+                  >
                     {saving ? "Sending…" : `Request this ride · ${peso(plan.assessment.quote.total)} est.`}
                   </button>
                 </form>
@@ -572,14 +599,22 @@ function Tick(props: { checked: boolean; onChange: (v: boolean) => void; title: 
   );
 }
 
-function Field(props: { label: string; value: string | null; onChange: (v: string) => void; type?: string }) {
+function Field(props: { label: string; value: string | null; onChange: (v: string) => void; type?: string; invalid?: boolean }) {
   const id = props.label.toLowerCase().replace(/[^a-z]+/g, "-");
   return (
     <div>
       <label htmlFor={id} className="label">
         {props.label}
+        {props.invalid && <span className="font-bold text-red-700"> · required</span>}
       </label>
-      <input id={id} type={props.type ?? "text"} className="input" value={props.value ?? ""} onChange={(e) => props.onChange(e.target.value)} />
+      <input
+        id={id}
+        type={props.type ?? "text"}
+        className={props.invalid ? "input border-2 border-red-500" : "input"}
+        aria-invalid={props.invalid || undefined}
+        value={props.value ?? ""}
+        onChange={(e) => props.onChange(e.target.value)}
+      />
     </div>
   );
 }

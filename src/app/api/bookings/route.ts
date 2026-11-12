@@ -3,6 +3,7 @@ import { bookingRequestSchema } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
 import { countRecentBookingsByPhone, recordEvent, saveBooking } from "@/lib/storage";
 import { bookingReference } from "@/lib/format";
+import { missingDetailsMessage, missingRequiredDetails } from "@/lib/required";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,13 @@ export async function POST(req: Request) {
     seniorPwdDiscount: plan.options.seniorPwdDiscount,
   });
   const assessment = fresh.assessment;
+
+  // Required details (AC20): never send a van without these
+  const missing = missingRequiredDetails(x);
+  if (missing.length > 0) {
+    return NextResponse.json({ error: missingDetailsMessage(missing), missing }, { status: 400 });
+  }
+
   if (assessment.blocked) {
     return NextResponse.json({ error: assessment.blockReason }, { status: 422 });
   }
