@@ -27,7 +27,7 @@ In a 2024 PGH study of 413 wheelchair users, **82.3% named accessibility as thei
 | ⭐ | **Feedback and complaints:** customers rate the service, driver and caregiver, report what went wrong (with time and names) and get an FB- ticket; safety reports are marked urgent; dispatchers see the average rating |
 | 📱 | **Anti-fraud:** a PH mobile number is required for every request (confirmation call), with a limit of 3 requests per number per day |
 | 🚨 | **Safety guardrails:** an emergency red-flag check runs *before* the AI and shows "Call 911"; stretcher cases are blocked; the server recomputes all prices |
-| 📋 | **Dispatcher board:** every request shows its reference (e.g. CR-4D718C0B) and the date and time it was requested, with the driver brief; names masked for privacy |
+| 📋 | **Dispatcher board (admin login):** every request shows its reference (e.g. CR-4D718C0B) and the date and time it was requested, with the driver brief; names masked for privacy |
 
 ## Tech stack
 Next.js 14 (App Router) · TypeScript · Tailwind CSS · Vercel AI SDK + OpenAI `gpt-4o-mini` · zod · Supabase (Postgres + RLS) · Vitest · GitHub Actions · Vercel + Vercel Analytics
@@ -106,4 +106,4 @@ Add-ons: second crew +₱300 · stair assist ₱100/floor · wheelchair provided
 See the GitHub issues **"v2: Real road distance & traffic-aware ETA via maps API"** and **"v2: Verify the mobile number with an SMS one-time code (OTP)"**. Also planned: round-trip pricing, operator accounts and acceptance flow, SMS/Viber notifications.
 
 ## Privacy
-Demo data only. The app asks for a pickup *area* (not a home address) and never asks for diagnoses. Dispatcher views mask contact names. Designed with the PH Data Privacy Act (RA 10173) in mind.
+Demo data only. The app asks for a pickup *area* (not a home address) and never asks for diagnoses. The dispatcher board at `/dispatch` needs an admin login (`DISPATCH_USER` / `DISPATCH_PASSWORD`) and masks contact names, numbers and emails. Designed with the PH Data Privacy Act (RA 10173) in mind.

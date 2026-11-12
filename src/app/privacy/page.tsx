@@ -95,7 +95,7 @@ export default function PrivacyPage() {
         <h2>7. How we protect it</h2>
         <ul>
           <li>Encrypted connections (HTTPS); the database can only be read by our server (row-level security).</li>
-          <li>Contact names are masked on the dispatcher screen; staff see only what they need.</li>
+          <li>The dispatcher screen needs an admin login and is not linked from public pages; contact names, numbers and emails are masked there, so staff see only what they need.</li>
           <li>Any personal data breach will be reported to the NPC and affected persons within 72 hours, as the law requires.</li>
         </ul>
       </section>
