@@ -208,20 +208,20 @@ function FeedbackPanel({ items }: { items: FeedbackRecord[] }) {
                 </div>
               )}
               <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm text-zinc-700 sm:grid-cols-2">
-                {f.driverName && (
+                {(f.driverName || f.ratingDriver) && (
                   <div>
                     <dt className="inline font-bold">Driver: </dt>
                     <dd className="inline">
-                      {f.driverName}
+                      {f.driverName ?? "name not given"}
                       {f.ratingDriver ? ` (${f.ratingDriver}/5)` : ""}
                     </dd>
                   </div>
                 )}
-                {f.caregiverName && (
+                {(f.caregiverName || f.ratingCaregiver) && (
                   <div>
                     <dt className="inline font-bold">Caregiver: </dt>
                     <dd className="inline">
-                      {f.caregiverName}
+                      {f.caregiverName ?? "name not given"}
                       {f.ratingCaregiver ? ` (${f.ratingCaregiver}/5)` : ""}
                     </dd>
                   </div>
