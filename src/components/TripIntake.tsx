@@ -19,11 +19,9 @@ import {
   WHEELCHAIR_RENTAL_FEE,
 } from "@/lib/rules";
 
-const SAMPLES = [
-  "Mama uses a wheelchair and can't stand. Dialysis at St. Luke's BGC every Tuesday 9am. We live in Kapitolyo, Pasig, 3rd floor, walang elevator. Walang makakasama sa kanya sa ospital.",
-  "Si lolo naka-walker, check-up sa PGH bukas alas-otso ng umaga. Taga Sampaloc, Manila kami, ground floor. Sasama ako.",
-  "My father uses a foldable wheelchair and can transfer to a car seat. We're in Alabang, Muntinlupa. Needs a hospital for a follow-up on Friday 2pm, may oxygen tank siya.",
-];
+/** Shown in grey inside the trip box as a guide (AC25); there are no "Try example" buttons. */
+const PLACEHOLDER_EXAMPLE =
+  "Mama uses a wheelchair and can't stand. Dialysis at St. Luke's BGC every Tuesday 9am. We live in Kapitolyo, Pasig, 3rd floor, walang elevator. Walang makakasama sa kanya sa ospital.";
 
 const MOBILITY_LABEL: Record<TripExtraction["mobility"], string> = {
   walks_with_assistance: "Walks with assistance (walker/cane)",
@@ -162,7 +160,7 @@ export default function TripIntake() {
           rows={5}
           maxLength={1500}
           className="input resize-y"
-          placeholder={`e.g., ${SAMPLES[0]}`}
+          placeholder={`e.g., ${PLACEHOLDER_EXAMPLE}`}
           aria-describedby="desc-help"
         />
         <div id="desc-help" className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
@@ -216,13 +214,6 @@ export default function TripIntake() {
             Where is the appointment? Pick from the list, or type the clinic name and its area (e.g., Healthway Clinic,
             Mandaluyong). We calculate the distance for you.
           </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {SAMPLES.map((s, i) => (
-            <button key={i} type="button" className="btn-ghost text-xs" onClick={() => setDescription(s)}>
-              Try example {i + 1}
-            </button>
-          ))}
         </div>
         <fieldset className="pt-2">
           <legend className="mb-2 text-base font-bold text-ube-950">What would you like to avail? Tick all that apply.</legend>
