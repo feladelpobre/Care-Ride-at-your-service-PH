@@ -17,13 +17,16 @@ In scope: PRD features F1–F7. Regulatory mapping: `docs/03-regulatory-complian
 
 ### 2.1 `POST /api/plan` — analyse a trip
 ```json
-{ "description": "string, 20–1500 chars", "distanceKm": 10, "companionHours": 3,
+{ "description": "string, 20–1500 chars", "pickupLocation": "Kapitolyo, Pasig",
+  "destination": "St. Luke's Medical Center – BGC", "companionHours": 3,
   "addons": { "wheelchair": false, "companion": false, "seniorPwd": false } }
 ```
 | Field | Rule |
 |---|---|
 | `description` | Required. Trimmed. 20–1,500 characters. Control characters stripped. |
-| `distanceKm` | Optional number 0.5–150. If omitted, it is **estimated** from the pickup city and hospital (§3.5). |
+| `pickupLocation` | Required (after the emergency gate). Barangay and city; replaces the AI's guess (AC21). |
+| `destination` | Required (after the emergency gate). Hospital or clinic; replaces the AI's guess (AC25). |
+| `distanceKm` | **Not accepted.** The distance is always calculated by the system from pickup and destination (§3.5, AC26); a value sent by the client is dropped. |
 | `companionHours` | Optional integer 0–12. If omitted: the default for the trip purpose when the companion box is ticked or the message asks for one, otherwise 0. |
 | `addons` | Step-1 tick boxes: `wheelchair` (we bring one, ₱150), `companion` (hospital companion/caregiver), `seniorPwd` (20% fare discount). All default `false`. |
 
@@ -56,7 +59,7 @@ Called every 10 minutes by a Supabase `pg_cron` job (Vercel Hobby cron can only 
 | `mobility` | `walks_with_assistance \| wheelchair_can_transfer \| wheelchair_must_stay_seated \| stretcher_bedbound \| unknown` |
 | `floorsWithoutElevator` | integer 0–20 (clamped) |
 | `equipment` | string[] (max 5), e.g. `oxygen_tank`, `walker` |
-| `companions` | integer 0–3 (clamped) |
+| `companions` | integer 0–1 (clamped): **maximum of 1 companion** rides along; if the message asks for more, "only 1 companion can ride along with the patient" is added to `missingInfo` (AC27) |
 | `recurring` | boolean |
 | `recurrenceNote` | string \| null |
 | `wantsHospitalCompanion` | boolean: the caregiver asks for someone to stay with the patient inside the hospital |
@@ -79,14 +82,14 @@ Called every 10 minutes by a Supabase `pg_cron` job (Vercel Hobby cron can only 
 ### 3.3 `TripPlan` (response of `/api/plan`)
 ```json
 { "extraction": TripExtraction, "assessment": Assessment, "driverBrief": ["string"],
-  "options": { "distanceKm": 6.5, "distanceSource": "estimated|default|caregiver", "companionHours": 0 },
+  "options": { "distanceKm": 6.5, "distanceSource": "estimated|default", "companionHours": 0 },
   "route": { "note": "...", "pickupCity": "Pasig", "hospital": "...", "nearestHospitals": [{ "name": "...", "km": 6.5 }] },
   "emergency": false, "source": "ai" }
 ```
 If the emergency pre-check fires, the response is `{ "emergency": true, "message": "...call 911..." }` and the AI is **not** called.
 
 ### 3.5 Distance & Pricing (deterministic, `src/lib/geo.ts`, `src/lib/rules.ts`)
-**Distance:** pickup = centroid of the named Metro Manila city/municipality (19 areas); destination = a curated list of 15 major hospitals (approximate coordinates). Road km = straight-line × 1.35, minimum 2 km, rounded to 0.5 km. If no hospital is named, the plan is priced to the **nearest hospital** and the 3 nearest are listed. If the pickup city is unknown, 10 km is used and the caregiver is asked to adjust. The caregiver can always override the km.
+**Distance:** pickup = centroid of the named Metro Manila city/municipality (19 areas); destination = a curated list of 15 major hospitals (approximate coordinates). Road km = straight-line × 1.35, minimum 2 km, rounded to 0.5 km. If no hospital is named, the plan is priced to the **nearest hospital** and the 3 nearest are listed. If the hospital is not on the list, the **area written in the destination** (city or a known barangay/district, e.g., "Healthway Clinic, Mandaluyong") is used instead. If neither the pickup area nor the destination's hospital or area can be found, 10 km is used and the dispatcher confirms the distance on the confirmation call. **The caregiver never types the distance**: it is recalculated whenever the pickup area or hospital changes, and `/api/bookings` recalculates it again on the server (AC26). Hospital names are matched ignoring case, accents, dashes and extra spaces.
 
 **One-way transport fare (base includes the first 5 km):**
 
@@ -152,6 +155,10 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | AC22 | A booking needs a valid **email** (400 otherwise, saved lower-case); right after saving, a confirmation email with the `CR-` reference, trip details and the 911 note is sent; if email fails the booking is still saved and the page asks for a screenshot; the dispatcher shows the email masked (`gi***@gmail.com`) | `tests/notifications.test.ts` |
 | AC23 | `/api/reminders` refuses calls without the cron secret (401); emails a reminder when pickup is within the next 2 hours (not before, not after pickup), and only once per booking | `tests/notifications.test.ts` |
 | AC24 | `/dispatch` is admin-only: visitors without a valid session are sent to `/admin/login`; the login checks `DISPATCH_USER`/`DISPATCH_PASSWORD` (wrong → 401, 5 tries per 15 min → 429, not set up → 503) and sets an HttpOnly, SameSite=Strict cookie signed with HMAC-SHA256, valid 12 h; changing the password logs everyone out; **Log out** clears it; the board is `noindex` and not cached; the menu shows Book a ride · Feedback · 🔒 Dispatcher; the Dispatcher link leads non-staff to the login page | `tests/admin-auth.test.ts` |
+| AC25 | Step 1 has a required **Destination (hospital or clinic)** field with a list of known hospitals; it replaces the AI's guess for `destination`; an empty field returns 400 "Please enter the destination", but only *after* the emergency gate. The trip box shows example 1 as its placeholder | `tests/plan-route.test.ts` |
+| AC26 | The **distance is calculated by the system**, never typed: step 3 shows it read-only; a `distanceKm` sent to `/api/plan` is ignored; `/api/bookings` recalculates it from pickup + destination and ignores a tampered `options.distanceKm`; "St. Luke's Medical Center BGC" (no dash) matches St. Luke's BGC; a destination not on the hospital list is read by its area ("Healthway Clinic - Las-Pinas" = "Healthway Clinic, Las Pinas"), and 10 km is used only when neither is known | `tests/plan-route.test.ts`, `tests/bookings-route.test.ts`, `tests/validation.test.ts`, `tests/geo.test.ts` |
+| AC27 | Step 1's hint asks the caregiver to describe the rider, the date and time of the appointment, and the date and time of pick-up, and says a maximum of 1 companion can ride along; companions are clamped to 0–1 and asking for more adds a note; a booking plan with 2 companions is rejected | `tests/rules.test.ts` |
+| AC28 | **"I am human" check** before the app opens: when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set, `/` and `/feedback` send visitors without a valid `cr_human` cookie to `/verify?next=…` (local paths only), and `/api/plan`, `/api/bookings`, `/api/feedback` return 403. `/api/human` confirms the Cloudflare Turnstile token on the server (failed → 403, 20 tries per 10 min) and sets an HttpOnly, SameSite=Lax cookie signed with HMAC-SHA256, valid 24 h. Without both keys the check is off. `/verify` always shows the Call 911 button | `tests/human-check.test.ts` |
 | AC18 | Booking without a mobile number (or empty) → 400 "Please enter a mobile number…"; the 4th request from the same number within 24 h → 429; dispatcher shows the number masked (0917 *** 4567) | `tests/bookings-route.test.ts`, `tests/validation.test.ts` |
 | AC17 | Every confirmed request gets a reference (`CR-` + 8 characters) and its request date/time; both appear on the confirmation and on the dispatcher card (Manila time) | `tests/bookings-route.test.ts` |
 | AC16 | Insights: 4 plans + 2 requests → 50% conversion, "meets 40% target"; events hold no personal data; no data → "–" | `tests/insights.test.ts` |
@@ -191,6 +198,9 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | 1.1 | Replaced "exact address" with "pickup area"; masked names on the board | Review: Data Privacy Act data-minimisation |
 | 1.2 | Replaced the flat fare with **distance-band pricing** plus an itemised quote; added the nearest-hospital estimate | Stakeholder review (founder): customers want to know the cost from their location to the (nearest) hospital |
 | 1.2 | Added the optional **hospital companion** service (hourly, until the appointment is completed) | Stakeholder review: a second revenue line, and caregivers often cannot stay at the hospital |
+| 1.12 | **"I am human" check** (Cloudflare Turnstile checkbox) before the app opens, confirmed on the server, remembered 24 h | Founder review: block bots and fake ride requests, like other booking apps (Turnstile / reCAPTCHA / hCaptcha) |
+| 1.11 | Ride-along companions capped at **1**; step-1 hint rewritten (rider, appointment date/time, pick-up date/time) | Founder review: seats and crew planning assume one family companion |
+| 1.10 | Required **destination** field in step 1; the **distance is calculated by the system only** (the km box was removed) and recalculated on the server; example 1 is the trip box placeholder | Founder review: riders were guessing the distance, which changes the price |
 | 1.9 | Dispatcher board made **admin-only** with a login page (`/admin/login`, signed session cookie checked in `src/middleware.ts`), removed from the public menu; the browser pop-up login was replaced because in-app browsers don't show it | Privacy review: customers could open `/dispatch` and see other families' trips and feedback (RA 10173) |
 | 1.8 | Required **pickup location** field in step 1; required details (pickup, hospital, date, time, mobility) block the request and are listed in red | User trial (4 testers): 2 didn't say how the patient moves, and the app silently chose the costliest van |
 | 1.8 | Required **email**: confirmation with the `CR-` reference, and a reminder 2 hours before pickup (Supabase `pg_cron`, since Vercel Hobby cron is daily only) | User trial: a tester asked how she would know her request went through; no notification was sent |

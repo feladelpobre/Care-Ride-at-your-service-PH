@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { assess, buildDriverBrief, chooseCrew, chooseVehicle, companionHoursBillable, computePickupTime, distanceSurcharge, priceQuote } from "@/lib/rules";
 import { normalizeExtraction, normalizeTime } from "@/lib/normalize";
 import { aiRaw, x } from "./fixtures";
+import { tripExtractionSchema } from "@/lib/schemas";
 
 const OPTS = { distanceKm: 10, companionHours: 0 };
 
@@ -120,5 +121,19 @@ describe("driver brief", () => {
     expect(brief).toMatch(/Crew: 2/);
     expect(brief).toMatch(/☐ Stair assist/);
     expect(brief).toMatch(/Recurring trip: Tue\/Thu\/Sat/);
+  });
+});
+
+describe("ride-along companions (AC27)", () => {
+  it("allows at most 1 companion and tells the caregiver when more were asked", () => {
+    const n = normalizeExtraction(aiRaw({ companions: 3, missingInfo: [] }));
+    expect(n.companions).toBe(1);
+    expect(n.missingInfo).toContain("only 1 companion can ride along with the patient");
+  });
+  it("adds no note for 0 or 1 companion", () => {
+    expect(normalizeExtraction(aiRaw({ companions: 1, missingInfo: [] })).missingInfo.join(" ")).not.toMatch(/companion/);
+  });
+  it("rejects a booking plan that says 2 companions", () => {
+    expect(tripExtractionSchema.safeParse(x({ companions: 2 })).success).toBe(false);
   });
 });

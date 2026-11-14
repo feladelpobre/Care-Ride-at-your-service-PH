@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { description, pickupLocation, distanceKm, companionHours, addons } = parsed.data;
+  const { description, pickupLocation, destination, companionHours, addons } = parsed.data;
 
   // 1) Emergency gate BEFORE the AI (AC2)
   if (detectEmergency(description).emergency) {
@@ -35,6 +35,10 @@ export async function POST(req: Request) {
   // Pickup location is required (AC21), checked after the emergency gate so 911 always wins
   if (!pickupLocation || pickupLocation.trim().length < 3) {
     return NextResponse.json({ error: "Please enter the pickup location (barangay and city)." }, { status: 400 });
+  }
+  // Destination is required too (AC25): the system calculates the distance from it
+  if (!destination || destination.trim().length < 3) {
+    return NextResponse.json({ error: "Please enter the destination (hospital or clinic)." }, { status: 400 });
   }
 
   // 2) Rate limit to protect the AI budget
@@ -61,16 +65,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ emergency: true, message: EMERGENCY_MESSAGE });
   }
 
-  // The caregiver's own pickup field wins over the AI's guess (AC21)
+  // The caregiver's own pickup and destination fields win over the AI's guesses (AC21, AC25)
   extraction = {
     ...extraction,
     pickupArea: pickupLocation.trim(),
-    missingInfo: extraction.missingInfo.filter((m) => !/pickup/i.test(m)),
+    destination: destination.trim(),
+    missingInfo: extraction.missingInfo.filter((m) => !/pickup|destination|hospital|clinic/i.test(m)),
   };
 
-  // 4) Deterministic rules: distance, pricing, vehicle, crew, pickup time
+  // 4) Deterministic rules: system-calculated distance (AC26), pricing, vehicle, crew, pickup time
   const plan = buildPlan(extraction, {
-    distanceKm,
     companionHours,
     companion: addons.companion,
     wheelchairRental: addons.wheelchair,

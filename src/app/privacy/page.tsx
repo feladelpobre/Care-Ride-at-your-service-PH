@@ -47,6 +47,10 @@ export default function PrivacyPage() {
             comments. We use this only to follow up and improve the service.
           </li>
           <li>Anonymous usage statistics (Vercel Analytics: page views and button events, no cookies).</li>
+          <li>
+            The &quot;I am human&quot; check: Cloudflare Turnstile looks at your browser and IP address for a moment to tell people from
+            robots. We keep only a cookie saying the check was passed, for 24 hours; no name or contact details.
+          </li>
         </ul>
         <p>We do <strong>not</strong> need, and ask you not to give, names of the patient, diagnoses or medical records.</p>
       </section>
@@ -75,7 +79,7 @@ export default function PrivacyPage() {
         <ul>
           <li>The assigned driver, crew and hospital companion, and only the details they need for the trip.</li>
           <li>
-            Service providers that process data for us under contract: Vercel (hosting), Supabase (database, Singapore region) and
+            Service providers that process data for us under contract: Vercel (hosting), Supabase (database, Singapore region), Cloudflare (the &quot;I am human&quot; check) and
             OpenRouter/OpenAI (AI processing). Some of these process data outside the Philippines; we require them to protect it.
           </li>
           <li>Government authorities when the law requires it.</li>

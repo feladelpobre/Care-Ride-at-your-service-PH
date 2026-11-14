@@ -4,7 +4,7 @@ import { listBookings, maskName } from "@/lib/storage";
 import { buildPlan } from "@/lib/plan";
 import { x } from "./fixtures";
 
-const makePlan = (ext = x()) => buildPlan(ext, { distanceKm: 10 });
+const makePlan = (ext = x()) => buildPlan(ext);
 const call = (body: unknown) => POST(new Request("http://test/api/bookings", { method: "POST", body: JSON.stringify(body) }));
 
 describe("POST /api/bookings", () => {
@@ -20,11 +20,22 @@ describe("POST /api/bookings", () => {
     const saved = (await listBookings())[0];
     expect(saved.vehicleType).toBe("wav_ramp_van");
     expect(saved.status).toBe("pending");
-    expect(saved.distanceKm).toBe(10);
+    expect(saved.distanceKm).toBe(6.5); // system-calculated Pasig → St. Luke's BGC
+  });
+
+  it("recalculates the distance on the server and ignores a tampered km (AC26)", async () => {
+    const plan = makePlan();
+    const tampered = { ...plan, options: { ...plan.options, distanceKm: 0.5 } };
+    const res = await call({ contactName: "Liza", contactEmail: "family@example.com", contactPhone: "09170000026", plan: tampered });
+    expect(res.status).toBe(201);
+    const saved = (await listBookings()).find((b) => b.contactName === "Liza" && b.distanceKm !== 0.5);
+    expect(saved?.distanceKm).toBe(6.5);
+    const { booking } = await res.json();
+    expect(booking.assessment.quote.lines.some((l: { label: string }) => l.label.includes("(6.5 km)"))).toBe(true);
   });
 
   it("recomputes the companion fee from hours, not from a client total", async () => {
-    const plan = buildPlan(x(), { distanceKm: 3, companionHours: 3 });
+    const plan = buildPlan(x(), { companionHours: 3 });
     const tampered = { ...plan, assessment: { ...plan.assessment, quote: { ...plan.assessment.quote, total: 0 } } };
     const { booking } = await (await call({ contactName: "Liza", contactEmail: "family@example.com", contactPhone: "09170000001", plan: tampered })).json();
     expect(booking.assessment.quote.companionSubtotal).toBe(750);

@@ -9,6 +9,9 @@ export const MOBILITY = [
   "unknown",
 ] as const;
 
+/** Only one companion (family member) may ride along with the patient (spec AC27). */
+export const MAX_RIDE_COMPANIONS = 1;
+
 export const TRIP_PURPOSE = ["dialysis", "checkup", "therapy", "chemotherapy", "discharge", "other"] as const;
 
 export const VEHICLE = ["sedan_assist", "wav_ramp_van", "not_supported"] as const;
@@ -26,7 +29,7 @@ export const aiExtractionSchema = z.object({
   mobility: z.enum(MOBILITY),
   floorsWithoutElevator: z.number().describe("Floors the patient must be carried down; 0 if ground floor or elevator"),
   equipment: z.array(z.string()).describe("snake_case items e.g. oxygen_tank, walker, foldable_wheelchair"),
-  companions: z.number().describe("Number of companions riding along, excluding patient"),
+  companions: z.number().describe("Number of companions riding along, excluding patient (we allow at most 1)"),
   recurring: z.boolean(),
   recurrenceNote: z.string().nullable(),
   wantsHospitalCompanion: z
@@ -51,7 +54,7 @@ export const tripExtractionSchema = z.object({
   mobility: z.enum(MOBILITY),
   floorsWithoutElevator: z.number().int().min(0).max(20),
   equipment: z.array(z.string().max(40)).max(5),
-  companions: z.number().int().min(0).max(3),
+  companions: z.number().int().min(0).max(MAX_RIDE_COMPANIONS),
   recurring: z.boolean(),
   recurrenceNote: z.string().max(120).nullable(),
   wantsHospitalCompanion: z.boolean(),
@@ -86,8 +89,9 @@ export const assessmentSchema = z.object({
 export type Assessment = z.infer<typeof assessmentSchema>;
 
 export const tripOptionsSchema = z.object({
+  /** Always calculated by the system from pickup + destination (spec §3.5); never typed by the caregiver. */
   distanceKm: z.coerce.number().min(0.5).max(150),
-  distanceSource: z.enum(["estimated", "default", "caregiver"]),
+  distanceSource: z.enum(["estimated", "default"]),
   companionHours: z.coerce.number().int().min(0).max(12),
   wheelchairRental: z.boolean().default(false),
   seniorPwdDiscount: z.boolean().default(false),
@@ -132,7 +136,11 @@ export const planRequestSchema = z.object({
    * /api/plan requires it right after the emergency gate (AC21).
    */
   pickupLocation: z.string().transform(sanitizeText).pipe(z.string().max(120)).optional(),
-  distanceKm: z.coerce.number().min(0.5).max(150).optional(),
+  /**
+   * Step 1 required field: the planned destination (hospital/clinic). Replaces the AI's guess
+   * and drives the system distance calculation. Required by /api/plan after the emergency gate (AC25).
+   */
+  destination: z.string().transform(sanitizeText).pipe(z.string().max(120)).optional(),
   companionHours: z.coerce.number().int().min(0).max(12).optional(),
   /** Tick boxes in step 1 */
   addons: z

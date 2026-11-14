@@ -3,7 +3,8 @@
  * - pickup = centroid of the Metro Manila city/municipality named by the caregiver
  * - destination = a known hospital from a curated list (approximate coordinates)
  * - road distance ≈ straight-line distance × 1.35, rounded to 0.5 km
- * Caregivers can always override the km. A maps API is planned for v2.
+ * The distance is always calculated here, never typed by the caregiver (AC26).
+ * A maps API is planned for v2.
  */
 
 export type Place = { name: string; aliases: string[]; lat: number; lng: number };
@@ -48,7 +49,16 @@ export const HOSPITALS: Place[] = [
   { name: "Amang Rodriguez Memorial Medical Center", aliases: ["amang rodriguez"], lat: 14.6331, lng: 121.0997 },
 ];
 
-const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "'");
+/** Lower-case, strip accents, unify apostrophes, and treat dashes/extra spaces as one space. */
+const norm = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[’']/g, "'")
+    .replace(/[-–—]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
 function findPlace(text: string | null, list: Place[]): Place | null {
   if (!text) return null;
@@ -92,7 +102,10 @@ export type RouteEstimate = {
 
 export const DEFAULT_KM = 10;
 
-/** Estimate route distance; if no hospital is named, suggest the nearest ones. */
+/**
+ * Estimate route distance. Destination order: a known hospital, else the area (city/barangay
+ * alias) written in the destination, else 10 km. If no destination is given, the nearest hospital.
+ */
 export function estimateRoute(pickupArea: string | null, destination: string | null): RouteEstimate {
   const city = findCity(pickupArea);
   const hospital = findHospital(destination);
@@ -108,13 +121,26 @@ export function estimateRoute(pickupArea: string | null, destination: string | n
   if (city && !destination) {
     return { distanceKm: nearest[0].km, source: "estimated", pickupCity: city.name, hospital: null, nearestHospitals: nearest, note: `No hospital named; priced to the nearest: ${nearest[0].name}` };
   }
+  // Hospital/clinic not on our list: read the area written in the destination instead
+  // (e.g., "Healthway Clinic, Mandaluyong" or "dialysis center sa Las-Pinas"), dash or no dash.
+  const destinationArea = hospital ? null : findCity(destination);
+  if (city && destinationArea) {
+    return {
+      distanceKm: roadKm(city, destinationArea),
+      source: "estimated",
+      pickupCity: city.name,
+      hospital: null,
+      nearestHospitals: nearest,
+      note: `Approx. road distance ${city.name} → ${destinationArea.name} (area of your destination)`,
+    };
+  }
   return {
     distanceKm: DEFAULT_KM,
     source: "default",
     pickupCity: city?.name ?? null,
     hospital: hospital?.name ?? null,
     nearestHospitals: nearest,
-    note: "Could not estimate the distance automatically. Using 10 km; please adjust.",
+    note: "We couldn't find this pickup area or hospital on our map yet, so we used 10 km. The dispatcher confirms the distance when they call.",
   };
 }
 

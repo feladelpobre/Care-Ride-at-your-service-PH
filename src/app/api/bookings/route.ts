@@ -28,10 +28,9 @@ export async function POST(req: Request) {
   }
   const { contactName, contactPhone, contactEmail, plan } = parsed.data;
 
-  // Never trust client-sent assessment: recompute (AC8)
+  // Never trust client-sent assessment or distance: recompute both (AC8, AC26)
   const x = plan.extraction;
   const fresh = buildPlan(x, {
-    distanceKm: plan.options.distanceKm,
     companionHours: plan.options.companionHours,
     wheelchairRental: plan.options.wheelchairRental,
     seniorPwdDiscount: plan.options.seniorPwdDiscount,

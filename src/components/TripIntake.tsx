@@ -7,6 +7,7 @@ import { track } from "@vercel/analytics";
 import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
+import { HOSPITALS } from "@/lib/geo";
 import { formatManilaDateTime } from "@/lib/format";
 import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
 import {
@@ -39,6 +40,7 @@ type Emergency = { emergency: true; message: string };
 export default function TripIntake() {
   const [description, setDescription] = useState("");
   const [pickupLocation, setPickupLocation] = useState("");
+  const [destination, setDestination] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
@@ -46,7 +48,6 @@ export default function TripIntake() {
   // AI result + caregiver edits
   const [extraction, setExtraction] = useState<TripExtraction | null>(null);
   const [aiPlan, setAiPlan] = useState<TripPlan | null>(null);
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [companionHours, setCompanionHours] = useState<number>(0);
 
   // Step 1 tick boxes
@@ -62,17 +63,16 @@ export default function TripIntake() {
   const [booking, setBooking] = useState<{ id: string; reference: string; requestedAt: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Re-price instantly with the same pure rules the server uses
+  // Re-price instantly with the same pure rules the server uses.
+  // The distance is recalculated by the system from pickup + destination (AC26).
   const plan: TripPlan | null = useMemo(() => {
     if (!extraction || !aiPlan) return null;
-    const kmChanged = distanceKm !== null && distanceKm !== aiPlan.options.distanceKm;
     return buildPlan(extraction, {
-      distanceKm: kmChanged ? distanceKm! : aiPlan.options.distanceSource === "caregiver" ? aiPlan.options.distanceKm : undefined,
       companionHours,
       wheelchairRental: wantWheelchair,
       seniorPwdDiscount: seniorPwd,
     });
-  }, [extraction, aiPlan, distanceKm, companionHours, wantWheelchair, seniorPwd]);
+  }, [extraction, aiPlan, companionHours, wantWheelchair, seniorPwd]);
 
   // Required details (AC20): the request button stays off until these are filled
   const missing: RequiredField[] = extraction ? missingRequiredDetails(extraction) : [];
@@ -93,6 +93,7 @@ export default function TripIntake() {
         body: JSON.stringify({
           description,
           pickupLocation,
+          destination,
           addons: { wheelchair: wantWheelchair, companion: wantCompanion, seniorPwd },
         }),
       });
@@ -106,7 +107,6 @@ export default function TripIntake() {
       const p = data as TripPlan;
       setAiPlan(p);
       setExtraction(p.extraction);
-      setDistanceKm(p.options.distanceKm);
       setCompanionHours(p.options.companionHours);
       if (p.options.companionHours > 0) setWantCompanion(true);
       track("trip_analyzed", {
@@ -162,11 +162,14 @@ export default function TripIntake() {
           rows={5}
           maxLength={1500}
           className="input resize-y"
-          placeholder="e.g., Mama uses a wheelchair, dialysis at St. Luke's BGC Tuesday 9am, we're in Pasig, 3rd floor, no elevator…"
+          placeholder={`e.g., ${SAMPLES[0]}`}
           aria-describedby="desc-help"
         />
         <div id="desc-help" className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
-          <span>Include: where from, which hospital, date and time, how the patient moves, stairs, equipment.</span>
+          <span>
+            Include: describe the rider (how they move, stairs, equipment), the date and time of the appointment, and the
+            date and time of pick-up. Maximum of 1 companion can ride along.
+          </span>
           <span>{description.length}/1500</span>
         </div>
         <div>
@@ -186,6 +189,32 @@ export default function TripIntake() {
           />
           <p id="pickup-help" className="mt-1 text-sm text-zinc-600">
             Where should the van pick up the patient? Barangay and city are enough; the driver calls you for the exact address.
+          </p>
+        </div>
+        <div>
+          <label htmlFor="destination" className="label">
+            Destination: hospital or clinic <span className="font-normal text-zinc-600">(required)</span>
+          </label>
+          <input
+            id="destination"
+            className="input"
+            list="hospital-list"
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
+            maxLength={120}
+            autoComplete="off"
+            placeholder="e.g., St. Luke's Medical Center – BGC"
+            required
+            aria-describedby="destination-help"
+          />
+          <datalist id="hospital-list">
+            {HOSPITALS.map((h) => (
+              <option key={h.name} value={h.name} />
+            ))}
+          </datalist>
+          <p id="destination-help" className="mt-1 text-sm text-zinc-600">
+            Where is the appointment? Pick from the list, or type the clinic name and its area (e.g., Healthway Clinic,
+            Mandaluyong). We calculate the distance for you.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -224,7 +253,7 @@ export default function TripIntake() {
             />
           </div>
         </fieldset>
-        <button type="submit" className="btn-primary w-full sm:w-auto" disabled={loading || description.trim().length < 20}>
+        <button type="submit" className="btn-primary w-full sm:w-auto" disabled={loading || description.trim().length < 20 || pickupLocation.trim().length < 3 || destination.trim().length < 3}>
           {loading ? "Analysing trip…" : "Plan my ride"}
         </button>
       </form>
@@ -348,22 +377,12 @@ export default function TripIntake() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="km" className="label">
-                    Distance (km)
-                  </label>
-                  <input
-                    id="km"
-                    type="number"
-                    min={0.5}
-                    max={150}
-                    step={0.5}
-                    className="input"
-                    value={plan.options.distanceKm}
-                    onChange={(e) => setDistanceKm(Math.max(0.5, Math.min(150, Number(e.target.value) || 0.5)))}
-                  />
+                  <span className="label">Distance (calculated by Care Ride)</span>
+                  <p className="text-2xl font-bold tabular-nums text-ube-950" aria-live="polite">
+                    {plan.options.distanceKm} km
+                  </p>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {plan.options.distanceSource === "caregiver" ? "Your distance." : aiPlan?.route.note} Approximate; adjust if
-                    you know the route.
+                    {plan.route.note.replace(/\.$/, "")}. To change it, edit the pickup area or hospital in step 2.
                   </p>
                 </div>
                 <div>
@@ -375,10 +394,7 @@ export default function TripIntake() {
                           <button
                             type="button"
                             className="text-left text-ube-800 underline-offset-2 hover:underline"
-                            onClick={() => {
-                              update({ destination: h.name });
-                              setDistanceKm(h.km);
-                            }}
+                            onClick={() => update({ destination: h.name })}
                           >
                             {h.name} · ~{h.km} km
                           </button>

@@ -36,3 +36,29 @@ describe("distance estimation (AC11)", () => {
     expect(p.assessment.quote.companionSubtotal).toBe(1250);
   });
 });
+
+describe("hospital names typed by caregivers (AC26)", () => {
+  it("matches a hospital with or without the dash and extra spaces", () => {
+    expect(findHospital("St. Luke's Medical Center BGC")?.name).toBe("St. Luke's Medical Center – BGC");
+    expect(findHospital("st. luke's medical center  -  bgc")?.name).toBe("St. Luke's Medical Center – BGC");
+  });
+});
+
+describe("destination read by its area when the hospital isn't on our list (AC26)", () => {
+  it("uses the area written in the destination, with or without a dash", () => {
+    const plain = estimateRoute("Kapitolyo, Pasig", "Healthway Clinic, Las Pinas");
+    const dashed = estimateRoute("Kapitolyo-Pasig", "Healthway Clinic - Las-Pinas");
+    expect(plain.source).toBe("estimated");
+    expect(plain.distanceKm).toBeGreaterThan(10);
+    expect(dashed.distanceKm).toBe(plain.distanceKm);
+    expect(plain.note).toMatch(/Pasig → Las Piñas \(area of your destination\)/);
+  });
+  it("still prefers a known hospital over the area", () => {
+    expect(estimateRoute("Pasig", "St. Luke's Medical Center - BGC, Taguig").hospital).toBe("St. Luke's Medical Center – BGC");
+  });
+  it("falls back to 10 km only when neither the hospital nor its area is known", () => {
+    const r = estimateRoute("Pasig", "Some Clinic");
+    expect(r.source).toBe("default");
+    expect(r.distanceKm).toBe(10);
+  });
+});

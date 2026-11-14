@@ -21,7 +21,7 @@ const book = (over: Record<string, unknown>, ext = x()) =>
   bookPOST(
     new Request("http://t/api/bookings", {
       method: "POST",
-      body: JSON.stringify({ contactName: "Gina", contactPhone: "09290000639", contactEmail: "gina@example.com", plan: buildPlan(ext, { distanceKm: 5 }), ...over }),
+      body: JSON.stringify({ contactName: "Gina", contactPhone: "09290000639", contactEmail: "gina@example.com", plan: buildPlan(ext), ...over }),
     }),
   );
 
@@ -32,7 +32,7 @@ describe("booking confirmation email (AC22)", () => {
   });
 
   it("requires a valid email address", () => {
-    const base = { contactName: "Gina", contactPhone: "09290000639", plan: buildPlan(x(), { distanceKm: 5 }) };
+    const base = { contactName: "Gina", contactPhone: "09290000639", plan: buildPlan(x()) };
     expect(bookingRequestSchema.safeParse(base).success).toBe(false);
     const bad = bookingRequestSchema.safeParse({ ...base, contactEmail: "gina@" });
     expect(bad.success).toBe(false);

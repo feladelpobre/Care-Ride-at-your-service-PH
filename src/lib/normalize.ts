@@ -1,4 +1,4 @@
-import { type AiExtraction, type TripExtraction, tripExtractionSchema } from "./schemas";
+import { MAX_RIDE_COMPANIONS, type AiExtraction, type TripExtraction, tripExtractionSchema } from "./schemas";
 
 const clampInt = (n: unknown, min: number, max: number): number => {
   const v = typeof n === "number" && Number.isFinite(n) ? Math.round(n) : 0;
@@ -43,6 +43,8 @@ export function normalizeExtraction(ai: AiExtraction): TripExtraction {
   if (!destination) missing.add("hospital or clinic name");
   if (!pickupArea) missing.add("pickup area (barangay/city)");
   if (ai.mobility === "unknown") missing.add("how the patient moves (wheelchair, walker, bedbound)");
+  // Only 1 companion may ride along (AC27); tell the caregiver instead of silently dropping people
+  if (ai.companions > MAX_RIDE_COMPANIONS) missing.add("only 1 companion can ride along with the patient");
 
   return tripExtractionSchema.parse({
     pickupArea,
@@ -53,7 +55,7 @@ export function normalizeExtraction(ai: AiExtraction): TripExtraction {
     mobility: ai.mobility,
     floorsWithoutElevator: clampInt(ai.floorsWithoutElevator, 0, 20),
     equipment: Array.from(new Set(ai.equipment.map((e) => e.trim().toLowerCase().slice(0, 40)).filter(Boolean))).slice(0, 5),
-    companions: clampInt(ai.companions, 0, 3),
+    companions: clampInt(ai.companions, 0, MAX_RIDE_COMPANIONS),
     recurring: ai.recurring,
     recurrenceNote: cut(ai.recurrenceNote, 120),
     wantsHospitalCompanion: Boolean(ai.wantsHospitalCompanion),

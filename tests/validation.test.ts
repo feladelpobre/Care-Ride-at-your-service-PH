@@ -10,13 +10,15 @@ describe("plan request validation (AC1)", () => {
   it("rejects descriptions over 1,500 characters", () => {
     expect(planRequestSchema.safeParse({ description: "a".repeat(1501) }).success).toBe(false);
   });
-  it("accepts a normal description; distance and companion hours are optional", () => {
+  it("accepts a normal description; companion hours are optional", () => {
     const r = planRequestSchema.parse({ description: "Wheelchair user to PGH tomorrow at 8am" });
-    expect(r.distanceKm).toBeUndefined();
     expect(r.companionHours).toBeUndefined();
   });
-  it("rejects distanceKm over 150 and companion hours over 12", () => {
-    expect(planRequestSchema.safeParse({ description: "Wheelchair user to PGH tomorrow at 8am", distanceKm: 500 }).success).toBe(false);
+  it("drops any distance sent by the client; the system calculates it (AC26)", () => {
+    const r = planRequestSchema.parse({ description: "Wheelchair user to PGH tomorrow at 8am", distanceKm: 3 });
+    expect("distanceKm" in r).toBe(false);
+  });
+  it("rejects companion hours over 12", () => {
     expect(planRequestSchema.safeParse({ description: "Wheelchair user to PGH tomorrow at 8am", companionHours: 20 }).success).toBe(false);
   });
   it("strips control characters", () => {

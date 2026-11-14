@@ -3,14 +3,15 @@ import { estimateRoute } from "./geo";
 import { assess, buildDriverBrief, DEFAULT_COMPANION_HOURS } from "./rules";
 
 /**
- * Builds a complete plan from an extraction plus optional caregiver overrides.
+ * Builds a complete plan from an extraction plus optional caregiver choices.
  * Pure function: used by /api/plan, by /api/bookings (server recompute) and
- * by the UI for instant re-pricing when the caregiver edits km or companion hours.
+ * by the UI for instant re-pricing when the caregiver edits places or companion hours.
+ * The distance is always calculated by the system from pickup + destination (AC26);
+ * there is deliberately no way to pass a caregiver-typed distance.
  */
 export function buildPlan(
   extraction: TripExtraction,
   overrides: {
-    distanceKm?: number;
     companionHours?: number;
     /** Tick boxes: "avail a wheelchair", "avail a hospital companion", "Senior/PWD" */
     wheelchairRental?: boolean;
@@ -20,8 +21,8 @@ export function buildPlan(
 ): TripPlan {
   const route = estimateRoute(extraction.pickupArea, extraction.destination);
   const options: TripOptionsInput = {
-    distanceKm: overrides.distanceKm ?? route.distanceKm,
-    distanceSource: overrides.distanceKm !== undefined ? "caregiver" : route.source,
+    distanceKm: route.distanceKm,
+    distanceSource: route.source,
     companionHours:
       overrides.companionHours ??
       (overrides.companion || extraction.wantsHospitalCompanion ? DEFAULT_COMPANION_HOURS[extraction.tripPurpose] : 0),

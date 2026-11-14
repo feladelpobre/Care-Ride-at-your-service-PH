@@ -15,7 +15,7 @@ const call = (body: Record<string, unknown>, ip = "1.1.1.1") =>
     new Request("http://test/api/plan", {
       method: "POST",
       headers: { "x-forwarded-for": ip },
-      body: JSON.stringify({ pickupLocation: "Brgy. San Antonio, Pasig", ...body }),
+      body: JSON.stringify({ pickupLocation: "Brgy. San Antonio, Pasig", destination: "St. Luke's Medical Center – BGC", ...body }),
     }),
   );
 
@@ -39,16 +39,17 @@ describe("POST /api/plan", () => {
   it("returns a full plan using AI extraction + rules (F1–F3)", async () => {
     extractTrip.mockResolvedValue(x({ mobility: "wheelchair_must_stay_seated", floorsWithoutElevator: 3, tripPurpose: "dialysis" }));
     const res = await call(
-      { description: "Mama uses a wheelchair, dialysis at St. Luke's BGC Tuesday 9am, 3rd floor no elevator", distanceKm: 10 },
+      { description: "Mama uses a wheelchair, dialysis at St. Luke's BGC Tuesday 9am, 3rd floor no elevator" },
       "2.2.2.2",
     );
     expect(res.status).toBe(200);
     const plan = await res.json();
     expect(plan.assessment.vehicle).toBe("wav_ramp_van");
     expect(plan.assessment.crewSize).toBe(2);
-    expect(plan.assessment.pickupTime).toBe("07:10"); // 9:00-30-45-20-15
+    expect(plan.assessment.pickupTime).toBe("07:20"); // 9:00-30-35 (6.5 km)-20-15
     expect(plan.driverBrief.length).toBeGreaterThan(3);
-    expect(plan.options.distanceSource).toBe("caregiver");
+    expect(plan.options.distanceSource).toBe("estimated");
+    expect(plan.options.distanceKm).toBe(6.5); // Pasig → St. Luke's BGC, calculated by the system
     expect(plan.assessment.quote.total).toBe(1800); // 900 base + 300 (5.1–10 km) + 300 crew + 300 stairs
   });
 
@@ -92,5 +93,35 @@ describe("POST /api/plan", () => {
     ).json();
     expect(plan.extraction.pickupArea).toBe("Talon Singko, Las Pinas");
     expect(plan.extraction.missingInfo).toEqual(["appointment time"]);
+  });
+
+  it("requires the destination, but only after the emergency gate (AC25)", async () => {
+    extractTrip.mockResolvedValue(x());
+    const noDest = await call({ description: "Wheelchair user going to PGH tomorrow 8am", destination: " " }, "6.6.6.1");
+    expect(noDest.status).toBe(400);
+    expect((await noDest.json()).error).toMatch(/destination/);
+    expect(extractTrip).not.toHaveBeenCalled();
+
+    const emergency = await call({ description: "Tatay has chest pain and is very pale right now", destination: "" }, "6.6.6.2");
+    expect((await emergency.json()).emergency).toBe(true);
+  });
+
+  it("uses the caregiver's destination field instead of the AI's guess (AC25)", async () => {
+    extractTrip.mockResolvedValue(x({ destination: "Makati Medical Center", missingInfo: ["hospital name", "appointment time"] }));
+    const plan = await (
+      await call({ description: "Wheelchair user going for a check-up tomorrow 8am", destination: " PGH " }, "6.6.6.3")
+    ).json();
+    expect(plan.extraction.destination).toBe("PGH");
+    expect(plan.route.hospital).toBe("Philippine General Hospital (PGH)");
+    expect(plan.extraction.missingInfo).toEqual(["appointment time"]);
+  });
+
+  it("calculates the distance itself and ignores a distance typed by the client (AC26)", async () => {
+    extractTrip.mockResolvedValue(x());
+    const plan = await (
+      await call({ description: "Wheelchair user to St. Luke's BGC Tuesday 9am from Pasig", distanceKm: 1 }, "6.6.6.4")
+    ).json();
+    expect(plan.options.distanceKm).toBe(6.5);
+    expect(plan.options.distanceSource).toBe("estimated");
   });
 });
