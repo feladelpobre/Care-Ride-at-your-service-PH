@@ -21,7 +21,7 @@ A Next.js 14 web app that turns a caregiver's plain-language trip description in
 7. **Data minimisation (PH Data Privacy Act):** don't add fields for full names, diagnoses or exact addresses without updating `spec.md §7`.
 8. **Every feature or bugfix needs a test** in `tests/` that maps to an acceptance criterion ID (AC1…AC23) in `spec.md`.
 10. **The dispatcher board is admin-only.** Keep `/dispatch` behind `src/middleware.ts`; never link it from public pages; any new admin page must be added to the middleware matcher.
-11. **"I am human" check sits at the booking step (AC28).** Public pages stay open (search engines must read them); `/api/plan`, `/api/bookings` and `/api/feedback` stay in the `src/middleware.ts` matcher; the Turnstile token is always confirmed on the server (`/api/human`). Never put the check in front of the emergency (911) message.
+11. **"I am human" check comes before the app (AC28).** Customer pages and their APIs stay in the `src/middleware.ts` matcher; the Turnstile token is always confirmed on the server (`/api/human`); `/verify` must keep the Call 911 button.
 9. **Notifications never block a booking.** `sendMail()` never throws; log the error type only, never the address or body. Email addresses are shown masked on screens.
 
 ## Code style
