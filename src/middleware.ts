@@ -2,11 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ADMIN_COOKIE, verifySessionToken } from "@/lib/adminAuth";
 import { HUMAN_COOKIE, isHumanCheckEnabled, verifyHumanToken } from "@/lib/humanCheck";
 
-/** Customer pages and APIs that need the "I am human" check first (AC28). */
-const HUMAN_API = ["/api/plan", "/api/bookings", "/api/feedback"];
-
 export async function middleware(req: NextRequest) {
-  const { pathname, search } = req.nextUrl;
+  const { pathname } = req.nextUrl;
 
   // Only logged-in operators may open the dispatcher board (AC24).
   if (pathname === "/dispatch" || pathname.startsWith("/dispatch/")) {
@@ -20,21 +17,18 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(login, { status: 307, headers: { "Cache-Control": "no-store" } });
   }
 
-  // "I am human" check before the app opens (AC28). Switched off until the Turnstile keys are set.
+  // "I am human" check at the booking step (AC28): pages open for everyone (and for Google),
+  // but planning, booking and feedback need the 24-hour pass. Off until the Turnstile keys are set.
   if (!isHumanCheckEnabled() || (await verifyHumanToken(req.cookies.get(HUMAN_COOKIE)?.value))) {
     return NextResponse.next();
   }
-  if (HUMAN_API.includes(pathname)) {
-    return NextResponse.json(
-      { error: "Please confirm you are human first: reload the page and tick the box." },
-      { status: 403, headers: { "Cache-Control": "no-store" } },
-    );
-  }
-  const verify = new URL("/verify", req.url);
-  verify.searchParams.set("next", `${pathname}${search}`);
-  return NextResponse.redirect(verify, { status: 307, headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json(
+    { error: "Please tick the \"I am human\" box first, then try again." },
+    { status: 403, headers: { "Cache-Control": "no-store" } },
+  );
 }
 
+/** Admin pages + the customer APIs that need the "I am human" pass. Public pages are not listed. */
 export const config = {
-  matcher: ["/", "/feedback", "/dispatch", "/dispatch/:path*", "/api/plan", "/api/bookings", "/api/feedback"],
+  matcher: ["/dispatch", "/dispatch/:path*", "/api/plan", "/api/bookings", "/api/feedback"],
 };

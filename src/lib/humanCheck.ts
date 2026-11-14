@@ -1,5 +1,5 @@
 /**
- * "I am human" check before the app opens (AC28). Edge-safe (used by middleware and API routes).
+ * "I am human" check at the booking step (AC28). Edge-safe (used by middleware and API routes).
  *
  * Same pattern as common apps (Cloudflare Turnstile, Google reCAPTCHA, hCaptcha): the visitor ticks a
  * checkbox widget, the widget gives a one-time token, and OUR SERVER confirms that token with the
@@ -81,10 +81,4 @@ export async function verifyTurnstile(
     console.error("human-check: verify failed", err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 200) : "unknown");
     return false;
   }
-}
-
-/** Only allow returning to a page on this site (prevents open redirects). */
-export function safeNext(next: string | null | undefined): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return "/";
-  return next;
 }

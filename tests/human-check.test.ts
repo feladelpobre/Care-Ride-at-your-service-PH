@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { HUMAN_COOKIE, createHumanToken, safeNext, verifyHumanToken, verifyTurnstile } from "@/lib/humanCheck";
+import { HUMAN_COOKIE, createHumanToken, verifyHumanToken, verifyTurnstile } from "@/lib/humanCheck";
 import { middleware } from "@/middleware";
-import { POST as humanPOST } from "@/app/api/human/route";
+import { GET as humanGET, POST as humanPOST } from "@/app/api/human/route";
 
 // Cloudflare's published test keys (always pass)
 const keys = { siteKey: "1x00000000000000000000AA", secret: "1x0000000000000000000000000000000AA" };
 
-describe('"I am human" check before the app opens (AC28)', () => {
+describe('"I am human" check at the booking step (AC28)', () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = keys.siteKey;
     process.env.TURNSTILE_SECRET_KEY = keys.secret;
@@ -18,10 +18,11 @@ describe('"I am human" check before the app opens (AC28)', () => {
     vi.unstubAllGlobals();
   });
 
-  it("sends visitors without the cookie to /verify, keeping where they were going", async () => {
-    const res = await middleware(new NextRequest("http://t/feedback?ref=CR-ABCD1234"));
-    expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe("http://t/verify?next=%2Ffeedback%3Fref%3DCR-ABCD1234");
+  it("lets everyone (and Google) open the pages without the check", async () => {
+    // Public pages aren't in the middleware matcher at all
+    const { config } = await import("@/middleware");
+    expect(config.matcher).not.toContain("/");
+    expect(config.matcher).not.toContain("/feedback");
   });
 
   it("blocks the booking APIs (403) without the cookie", async () => {
@@ -31,17 +32,25 @@ describe('"I am human" check before the app opens (AC28)', () => {
     }
   });
 
-  it("lets people in with a valid cookie", async () => {
+  it("lets the booking APIs through with a valid pass", async () => {
     const cookie = await createHumanToken();
-    const res = await middleware(new NextRequest("http://t/", { headers: { cookie: `${HUMAN_COOKIE}=${cookie}` } }));
-    expect(res.headers.get("location")).toBeNull();
+    const res = await middleware(new NextRequest("http://t/api/plan", { method: "POST", headers: { cookie: `${HUMAN_COOKIE}=${cookie}` } }));
     expect(res.status).toBe(200);
+  });
+
+  it("tells the form whether the box still has to be ticked", async () => {
+    const before = await (await humanGET(new NextRequest("http://t/api/human"))).json();
+    expect(before).toEqual({ enabled: true, verified: false, siteKey: keys.siteKey });
+    const cookie = await createHumanToken();
+    const after = await (await humanGET(new NextRequest("http://t/api/human", { headers: { cookie: `${HUMAN_COOKIE}=${cookie}` } }))).json();
+    expect(after.verified).toBe(true);
   });
 
   it("is switched off when the keys aren't set, so customers are never locked out", async () => {
     delete process.env.TURNSTILE_SECRET_KEY;
-    const res = await middleware(new NextRequest("http://t/"));
-    expect(res.headers.get("location")).toBeNull();
+    const res = await middleware(new NextRequest("http://t/api/plan", { method: "POST" }));
+    expect(res.status).toBe(200);
+    expect((await (await humanGET(new NextRequest("http://t/api/human"))).json()).enabled).toBe(false);
   });
 
   it("cookie lasts 24 hours and can't be forged", async () => {
@@ -71,17 +80,11 @@ describe('"I am human" check before the app opens (AC28)', () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ success: false, "error-codes": ["invalid-input-response"] }))));
     const bad = await humanPOST(new Request("http://t/api/human", { method: "POST", headers: { "x-forwarded-for": "8.1.1.2" }, body: JSON.stringify({ token: "fake" }) }));
     expect(bad.status).toBe(403);
+    expect((await bad.json()).error).toMatch(/didn't pass/);
     expect(bad.headers.get("set-cookie")).toBeNull();
     const none = await humanPOST(new Request("http://t/api/human", { method: "POST", headers: { "x-forwarded-for": "8.1.1.3" }, body: "{}" }));
     expect(none.status).toBe(403);
     expect(await verifyTurnstile("t", null, keys, vi.fn(async () => { throw new Error("offline"); }))).toBe(false);
   });
 
-  it("only returns visitors to pages on this site", () => {
-    expect(safeNext("/feedback?ref=CR-1")).toBe("/feedback?ref=CR-1");
-    expect(safeNext("https://evil.example")).toBe("/");
-    expect(safeNext("//evil.example")).toBe("/");
-    expect(safeNext(String.raw`/\evil.example`)).toBe("/");
-    expect(safeNext(undefined)).toBe("/");
-  });
 });

@@ -8,6 +8,7 @@ import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
 import { HOSPITALS } from "@/lib/geo";
+import { HumanCheckbox, useHumanCheck } from "@/components/HumanCheck";
 import { formatManilaDateTime } from "@/lib/format";
 import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
 import {
@@ -38,6 +39,7 @@ const peso = (n: number) => (n < 0 ? `−₱${Math.abs(n).toLocaleString("en-PH"
 type Emergency = { emergency: true; message: string };
 
 export default function TripIntake() {
+  const human = useHumanCheck();
   const [description, setDescription] = useState("");
   const [pickupLocation, setPickupLocation] = useState("");
   const [destination, setDestination] = useState("");
@@ -98,6 +100,7 @@ export default function TripIntake() {
         }),
       });
       const data = await res.json();
+      if (res.status === 403) human.markNeeded();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
       if (data.emergency) {
         setEmergency(data);
@@ -134,6 +137,7 @@ export default function TripIntake() {
         body: JSON.stringify({ contactName, contactPhone, contactEmail, plan }),
       });
       const data = await res.json();
+      if (res.status === 403) human.markNeeded();
       if (!res.ok) throw new Error(data.error ?? "Could not save the booking.");
       setBooking(data.booking);
       setEmailSent(Boolean(data.emailSent));
@@ -253,7 +257,18 @@ export default function TripIntake() {
             />
           </div>
         </fieldset>
-        <button type="submit" className="btn-primary w-full sm:w-auto" disabled={loading || description.trim().length < 20 || pickupLocation.trim().length < 3 || destination.trim().length < 3}>
+        {human.status === "needed" && human.siteKey && <HumanCheckbox siteKey={human.siteKey} onVerified={human.markOk} />}
+        <button
+          type="submit"
+          className="btn-primary w-full sm:w-auto"
+          disabled={
+            loading ||
+            human.status !== "ok" ||
+            description.trim().length < 20 ||
+            pickupLocation.trim().length < 3 ||
+            destination.trim().length < 3
+          }
+        >
           {loading ? "Analysing trip…" : "Plan my ride"}
         </button>
       </form>
@@ -622,11 +637,17 @@ export default function TripIntake() {
                       Add the missing details in step 2 first: {missing.map((f) => REQUIRED_LABELS[f]).join(", ")}.
                     </p>
                   )}
+                  {human.status === "needed" && human.siteKey && (
+                    <div className="sm:col-span-2">
+                      <HumanCheckbox siteKey={human.siteKey} onVerified={human.markOk} />
+                    </div>
+                  )}
                   <button
                     type="submit"
                     className="btn-primary sm:col-span-2"
                     disabled={
                       saving ||
+                      human.status !== "ok" ||
                       missing.length > 0 ||
                       !consent ||
                       contactName.trim().length < 2 ||

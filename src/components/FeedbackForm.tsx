@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HumanCheckbox, useHumanCheck } from "@/components/HumanCheck";
 import { Star } from "lucide-react";
 import { ISSUE_TYPES, type IssueType } from "@/lib/feedback";
 import { formatManilaDateTime } from "@/lib/format";
@@ -8,6 +9,7 @@ import { formatManilaDateTime } from "@/lib/format";
 type Result = { ticket: string; priority: string; createdAt: string };
 
 export default function FeedbackForm({ initialReference }: { initialReference: string }) {
+  const human = useHumanCheck();
   const [reference, setReference] = useState(initialReference);
   const [phone, setPhone] = useState("");
   const [overall, setOverall] = useState(0);
@@ -52,6 +54,7 @@ export default function FeedbackForm({ initialReference }: { initialReference: s
         }),
       });
       const data = await res.json();
+      if (res.status === 403) human.markNeeded();
       if (!res.ok) throw new Error(data.error ?? "Could not send your feedback.");
       setResult(data);
     } catch (err) {
@@ -210,7 +213,9 @@ export default function FeedbackForm({ initialReference }: { initialReference: s
         </p>
       )}
 
-      <button type="submit" className="btn-primary w-full sm:w-auto" disabled={sending}>
+      {human.status === "needed" && human.siteKey && <HumanCheckbox siteKey={human.siteKey} onVerified={human.markOk} />}
+
+      <button type="submit" className="btn-primary w-full sm:w-auto" disabled={sending || human.status !== "ok"}>
         {sending ? "Sending…" : "Send feedback"}
       </button>
       <p className="text-sm text-zinc-600">

@@ -1,12 +1,25 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { HUMAN_COOKIE, HUMAN_HOURS, createHumanToken, isHumanCheckEnabled, verifyTurnstile } from "@/lib/humanCheck";
+import { HUMAN_COOKIE, HUMAN_HOURS, createHumanToken, isHumanCheckEnabled, verifyHumanToken, verifyTurnstile } from "@/lib/humanCheck";
 import { clientKey, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const HUMAN_CHECK_FAILED =
+  "The check didn't pass. Please tick the box again. If it keeps failing, try another browser or turn off your VPN or ad blocker.";
+
 const body = z.object({ token: z.string().min(1).max(2048) });
+
+/** Tells the booking forms whether the "I am human" box still has to be ticked (AC28). */
+export async function GET(req: NextRequest) {
+  const enabled = isHumanCheckEnabled();
+  const verified = enabled ? await verifyHumanToken(req.cookies.get(HUMAN_COOKIE)?.value) : true;
+  return NextResponse.json(
+    { enabled, verified, siteKey: enabled ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY : null },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
 
 /** Confirms the "I am human" checkbox with Cloudflare, then sets the 24-hour cookie (AC28). */
 export async function POST(req: Request) {
@@ -22,7 +35,7 @@ export async function POST(req: Request) {
   }
   const ip = clientKey(req);
   if (!parsed?.success || !(await verifyTurnstile(parsed.data.token, ip === "anon" ? null : ip))) {
-    return NextResponse.json({ error: "We couldn't confirm the check. Please tick the box again." }, { status: 403 });
+    return NextResponse.json({ error: HUMAN_CHECK_FAILED }, { status: 403 });
   }
   const res = NextResponse.json({ ok: true });
   res.cookies.set(HUMAN_COOKIE, await createHumanToken(), {
