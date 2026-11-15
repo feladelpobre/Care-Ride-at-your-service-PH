@@ -226,8 +226,8 @@ export default function TripIntake() {
         />
         <div id="desc-help" className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
           <span>
-            Include: describe the rider (how they move, stairs, equipment), the date and time of the appointment, and the
-            date and time of pick-up. Maximum of 1 companion can ride along.
+            Describe the rider: stairs or floors without an elevator, equipment (oxygen, walker), the reason for the trip
+            (dialysis, check-up) and who rides along (maximum of 1 companion). You&apos;ll add the places and times below.
           </span>
           <span>{description.length}/1500</span>
         </div>
