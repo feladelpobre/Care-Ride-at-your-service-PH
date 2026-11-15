@@ -9,6 +9,8 @@ A caregiver describes the trip in plain English or Taglish. Care Ride's AI turns
 
 > Built for Week 4 Graded Mini Project 4.2 (AI-Powered Web Application) by Feladel "Peng" Pobre.
 
+📱 **Scan to open the app:** <br><img src="docs/assets/care-ride-qr.png" alt="QR code that opens the Care Ride app" width="160"><br>How riders will find us (QR posters, hashtags, captions): [`docs/04-launch-plan.md`](docs/04-launch-plan.md)
+
 ---
 
 ## The problem
@@ -46,6 +48,7 @@ Browser → /api/bookings → validate → RECOMPUTE plan on server → Supabase
 | Idea Validation Report (7 steps) | [`docs/01-idea-validation.md`](docs/01-idea-validation.md) |
 | PRD (1 page) | [`docs/02-PRD.md`](docs/02-PRD.md) |
 | Regulatory & healthcare compliance plan | [`docs/03-regulatory-compliance.md`](docs/03-regulatory-compliance.md) |
+| Launch plan (QR code poster, hashtags, captions, metrics) | [`docs/04-launch-plan.md`](docs/04-launch-plan.md) |
 | Spec (inputs, outputs, AI module, acceptance criteria, edge cases, revision log) | [`spec.md`](spec.md) |
 | Architecture notes | [`docs/architecture.md`](docs/architecture.md) |
 | AI agent rules | [`CLAUDE.md`](CLAUDE.md), [`.cursorrules`](.cursorrules) |
