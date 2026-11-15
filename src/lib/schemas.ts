@@ -106,7 +106,7 @@ export type Assessment = z.infer<typeof assessmentSchema>;
 
 export const tripOptionsSchema = z.object({
   /** Always calculated by the system from pickup + destination (spec §3.5); never typed by the caregiver. */
-  distanceKm: z.coerce.number().min(0.5).max(150),
+  distanceKm: z.coerce.number().min(0.5).max(3000),
   distanceSource: z.enum(["estimated", "default"]),
   companionHours: z.coerce.number().int().min(0).max(12),
   wheelchairRental: z.boolean().default(false),

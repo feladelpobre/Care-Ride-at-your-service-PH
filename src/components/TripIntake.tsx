@@ -7,7 +7,7 @@ import { track } from "@vercel/analytics";
 import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
-import { HOSPITALS, isInServiceArea, nearestCity } from "@/lib/geo";
+import { HOSPITALS, gpsPlaceName, isInServiceArea } from "@/lib/geo";
 import { formatManilaDateTime } from "@/lib/format";
 import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
 import {
@@ -116,11 +116,12 @@ export default function TripIntake() {
         const g = { lat: Math.round(pos.coords.latitude * 1000) / 1000, lng: Math.round(pos.coords.longitude * 1000) / 1000 };
         if (!isInServiceArea(g)) {
           setGps(null);
-          setGpsStatus({ busy: false, message: "Your location looks outside our Metro Manila service area. Please type the pickup barangay and city." });
+          setGpsStatus({ busy: false, message: "Your location looks outside the Philippines. Please type the pickup barangay and city." });
           return;
         }
         setGps(g);
-        setPickupLocation(`Near ${nearestCity(g).name} (GPS)`);
+        const place = gpsPlaceName(g).replace("your GPS location", "").replace(/[()]/g, "").trim();
+        setPickupLocation(place ? `${place[0].toUpperCase()}${place.slice(1)} (GPS)` : "Current location (GPS)");
         setGpsStatus({ busy: false, message: "Location found. We measure the distance from here; your exact location isn't saved." });
       },
       () => setGpsStatus({ busy: false, message: "We couldn't get your location. Allow location access, or type the barangay and city." }),

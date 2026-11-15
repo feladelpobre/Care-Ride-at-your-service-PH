@@ -91,19 +91,28 @@ export function roadKm(a: Place, b: Place): number {
   return Math.max(2, Math.round(haversineKm(a, b) * 1.35 * 2) / 2);
 }
 
-/** Rough box around Metro Manila and nearby Rizal/Cavite/Laguna towns we serve. */
-export const SERVICE_AREA = { minLat: 14.2, maxLat: 14.9, minLng: 120.8, maxLng: 121.35 };
+/** GPS works anywhere in the Philippines (AC29); positions outside this box are ignored. */
+export const SERVICE_AREA = { minLat: 4.5, maxLat: 21.5, minLng: 116, maxLng: 127 };
 
-/** True when a GPS position is inside the service area (positions outside it are ignored). */
+/** Trips longer than this are outside our usual Greater Manila area: the dispatcher confirms the price. */
+export const USUAL_MAX_KM = 60;
+
+/** True when a GPS position is inside the Philippines (positions outside it are ignored). */
 export function isInServiceArea(g: { lat: number; lng: number } | null | undefined): g is { lat: number; lng: number } {
   return Boolean(
     g && g.lat >= SERVICE_AREA.minLat && g.lat <= SERVICE_AREA.maxLat && g.lng >= SERVICE_AREA.minLng && g.lng <= SERVICE_AREA.maxLng,
   );
 }
 
-/** The city centre closest to a GPS position, to name the pickup area. */
+/** The Metro Manila city centre closest to a GPS position, to name the pickup area. */
 export function nearestCity(g: { lat: number; lng: number }): Place {
   return CITIES.reduce((best, c) => (haversineKm(g, c) < haversineKm(g, best) ? c : best), CITIES[0]);
+}
+
+/** A short name for a GPS pickup: "near Pasig" inside Metro Manila, otherwise just "your GPS location". */
+export function gpsPlaceName(g: { lat: number; lng: number }): string {
+  const c = nearestCity(g);
+  return haversineKm(g, c) <= 15 ? `your GPS location (near ${c.name})` : "your GPS location";
 }
 
 export type RouteEstimate = {
@@ -129,7 +138,7 @@ export function estimateRoute(
   // Phone GPS beats the typed area (AC29): measure from the exact pickup point
   const fromGps = isInServiceArea(gps);
   const city: Place | null = fromGps
-    ? { name: `your GPS location (near ${nearestCity(gps).name})`, aliases: [], lat: gps.lat, lng: gps.lng }
+    ? { name: gpsPlaceName(gps), aliases: [], lat: gps.lat, lng: gps.lng }
     : findCity(pickupArea);
   const hospital = findHospital(destination);
   const nearest = city
@@ -164,6 +173,15 @@ export function estimateRoute(
     hospital: hospital?.name ?? null,
     nearestHospitals: nearest,
     note: "We couldn't find this pickup area or hospital on our map yet, so we used 10 km. The dispatcher confirms the distance when they call.",
+  };
+}
+
+/** Adds the "far trip" note when a trip is longer than the usual Greater Manila area. */
+export function withFarTripNote(r: RouteEstimate): RouteEstimate {
+  if (r.distanceKm <= USUAL_MAX_KM) return r;
+  return {
+    ...r,
+    note: `${r.note}. This trip is outside our usual Greater Manila area (over ${USUAL_MAX_KM} km): the price shown is an estimate, and the dispatcher confirms it when they call`,
   };
 }
 

@@ -35,9 +35,19 @@ describe("GPS pickup location (AC29)", () => {
     expect(gps.distanceKm).toBe(3);
     expect(gps.pickupCity).toMatch(/GPS location \(near Pasig\)/);
   });
-  it("ignores positions outside the Metro Manila service area", () => {
-    expect(isInServiceArea({ lat: 10.3, lng: 123.9 })).toBe(false); // Cebu
-    expect(estimateRoute("Pasig", "St. Luke's BGC", { lat: 10.3, lng: 123.9 }).distanceKm).toBe(6.5);
+  it("works anywhere in the Philippines, and ignores positions outside it", () => {
+    expect(isInServiceArea({ lat: 10.3, lng: 123.9 })).toBe(true); // Cebu
+    expect(isInServiceArea({ lat: 35.68, lng: 139.69 })).toBe(false); // Tokyo
+    expect(estimateRoute("Pasig", "St. Luke's BGC", { lat: 35.68, lng: 139.69 }).distanceKm).toBe(6.5);
+  });
+  it("flags trips over 60 km so the dispatcher confirms the price", () => {
+    const BAGUIO = { lat: 16.41, lng: 120.59 };
+    const far = buildPlan(x({ pickupArea: "Current location (GPS)", destination: "PGH" }), { pickupGps: BAGUIO });
+    expect(far.options.distanceKm).toBeGreaterThan(200);
+    expect(far.route.pickupCity).toBe("your GPS location");
+    expect(far.route.note).toMatch(/outside our usual Greater Manila area.*dispatcher confirms/);
+    const near = buildPlan(x(), { pickupGps: KAPITOLYO });
+    expect(near.route.note).not.toMatch(/outside our usual/);
   });
   it("rounds GPS to about 110 m before using it", () => {
     const r = planRequestSchema.parse({ description: "Wheelchair user to PGH tomorrow at 8am", pickupGps: { lat: 14.571234, lng: 121.061987 } });

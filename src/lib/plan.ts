@@ -1,5 +1,5 @@
 import type { TripExtraction, TripOptionsInput, TripPlan } from "./schemas";
-import { estimateRoute } from "./geo";
+import { estimateRoute, withFarTripNote } from "./geo";
 import { assess, buildDriverBrief, DEFAULT_COMPANION_HOURS } from "./rules";
 
 /**
@@ -23,7 +23,7 @@ export function buildPlan(
     requestedPickupTime?: string | null;
   } = {},
 ): TripPlan {
-  const route = estimateRoute(extraction.pickupArea, extraction.destination, overrides.pickupGps);
+  const route = withFarTripNote(estimateRoute(extraction.pickupArea, extraction.destination, overrides.pickupGps));
   const options: TripOptionsInput = {
     distanceKm: route.distanceKm,
     distanceSource: route.source,
