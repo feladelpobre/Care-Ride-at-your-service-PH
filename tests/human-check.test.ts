@@ -44,11 +44,11 @@ describe('"I am human" check before the app opens (AC28)', () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
-  it("cookie lasts 24 hours and can't be forged", async () => {
+  it("the pass lasts 1 hour and can't be forged", async () => {
     const now = Date.parse("2026-11-14T00:00:00Z");
     const token = await createHumanToken(now, keys);
-    expect(await verifyHumanToken(token, now + 23 * 3_600_000, keys)).toBe(true);
-    expect(await verifyHumanToken(token, now + 24 * 3_600_000 + 1, keys)).toBe(false);
+    expect(await verifyHumanToken(token, now + 59 * 60_000, keys)).toBe(true);
+    expect(await verifyHumanToken(token, now + 60 * 60_000 + 1, keys)).toBe(false);
     const [exp, sig] = token.split(".");
     expect(await verifyHumanToken(`${Number(exp) + 999999}.${sig}`, now, keys)).toBe(false);
     expect(await verifyHumanToken(token, now, { ...keys, secret: "rotated-secret" })).toBe(false);
@@ -65,6 +65,7 @@ describe('"I am human" check before the app opens (AC28)', () => {
     expect(cookie).toContain(`${HUMAN_COOKIE}=`);
     expect(cookie).toContain("httponly");
     expect(cookie).toContain("samesite=lax");
+    expect(cookie).toContain("max-age=3600");
   });
 
   it("refuses a token Cloudflare rejects, a missing token, and a network error (403)", async () => {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
+import { HUMAN_TAB_KEY } from "@/lib/humanTab";
 
 type Turnstile = {
   render: (el: HTMLElement, opts: Record<string, unknown>) => string;
@@ -39,6 +40,12 @@ export default function HumanCheck({ siteKey, next }: { siteKey: string; next: s
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
             throw new Error(data.error ?? "The check didn't pass. Please tick the box again. If it keeps failing, try another browser or turn off your VPN or ad blocker.");
+          }
+          // Remember the pass for this tab only, so a new opening asks again (AC28)
+          try {
+            sessionStorage.setItem(HUMAN_TAB_KEY, String(Date.now()));
+          } catch {
+            /* storage blocked: the server pass still protects bookings */
           }
           window.location.replace(next);
         } catch (err) {

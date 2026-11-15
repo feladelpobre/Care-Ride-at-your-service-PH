@@ -3,8 +3,9 @@
  *
  * Same pattern as common apps (Cloudflare Turnstile, Google reCAPTCHA, hCaptcha): the visitor ticks a
  * checkbox widget, the widget gives a one-time token, and OUR SERVER confirms that token with the
- * provider. Only then do we set an HttpOnly cookie "<expiry>.<HMAC-SHA256 signature>", valid 24 hours,
- * so people aren't asked again on every page.
+ * provider. Only then do we set an HttpOnly cookie "<expiry>.<HMAC-SHA256 signature>", valid 1 hour
+ * (enough to finish a booking). The check also runs again on every new opening of the app (AC28):
+ * a per-tab marker in sessionStorage (HUMAN_TAB_KEY) is set after passing and is gone in a new tab.
  *
  * We use Cloudflare Turnstile: free, no picture puzzles, no advertising cookies.
  * - NEXT_PUBLIC_TURNSTILE_SITE_KEY: public site key shown in the page (not a secret).
@@ -12,7 +13,9 @@
  * Without both keys the check is switched off (the app opens normally) so a missing setup never locks customers out.
  */
 export const HUMAN_COOKIE = "cr_human";
-export const HUMAN_HOURS = 24;
+/** How long a pass lasts for the booking APIs. */
+export const HUMAN_MINUTES = 60;
+export { HUMAN_TAB_KEY } from "./humanTab";
 export const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 type Keys = { siteKey?: string; secret?: string };
@@ -46,7 +49,7 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 export async function createHumanToken(now = Date.now(), k: Keys = env()): Promise<string> {
-  const exp = String(now + HUMAN_HOURS * 3_600_000);
+  const exp = String(now + HUMAN_MINUTES * 60_000);
   return `${exp}.${await sign(exp, k.secret ?? "")}`;
 }
 

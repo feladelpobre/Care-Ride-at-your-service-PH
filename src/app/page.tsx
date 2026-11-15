@@ -1,10 +1,13 @@
 import { Accessibility, BadgePercent, HeartHandshake, ShieldCheck } from "lucide-react";
+import HumanTabGate from "@/components/HumanTabGate";
+import { isHumanCheckEnabled } from "@/lib/humanCheck";
 import TripIntake from "@/components/TripIntake";
 import { LogoMark } from "@/components/Logo";
 
 export default function Home() {
   return (
     <div className="space-y-10">
+      <HumanTabGate enabled={isHumanCheckEnabled()} />
       <section className="grid items-center gap-8 md:grid-cols-[1.1fr_1fr]">
         <div>
           <h1 className="text-[2.1rem] font-bold leading-[1.12] tracking-tight text-ube-950 sm:text-5xl">

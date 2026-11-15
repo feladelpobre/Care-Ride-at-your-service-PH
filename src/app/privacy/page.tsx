@@ -53,7 +53,7 @@ export default function PrivacyPage() {
           <li>Anonymous usage statistics (Vercel Analytics: page views and button events, no cookies).</li>
           <li>
             The &quot;I am human&quot; check: Cloudflare Turnstile looks at your browser and IP address for a moment to tell people from
-            robots. We keep only a cookie saying the check was passed, for 24 hours; no name or contact details.
+            robots. We keep only a cookie saying the check was passed, for up to 1 hour, and ask again each time you open the app; no name or contact details.
           </li>
         </ul>
         <p>We do <strong>not</strong> need, and ask you not to give, names of the patient, diagnoses or medical records.</p>

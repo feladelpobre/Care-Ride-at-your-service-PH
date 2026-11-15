@@ -17,7 +17,7 @@ export default function VerifyPage({ searchParams }: { searchParams: { next?: st
         <h1 className="text-3xl font-bold tracking-tight text-ube-950">Quick check before we start</h1>
         <p className="mt-2 text-zinc-700">
           Please confirm you are a person, not a robot. This keeps fake ride requests away from our drivers. You only need to do
-          this once a day on this device.
+          this each time you open the app; it usually passes on its own in a second or two.
         </p>
       </div>
 

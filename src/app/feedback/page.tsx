@@ -1,4 +1,6 @@
 import FeedbackForm from "@/components/FeedbackForm";
+import HumanTabGate from "@/components/HumanTabGate";
+import { isHumanCheckEnabled } from "@/lib/humanCheck";
 
 export const metadata = { title: "How was your ride? · Care Ride at your service-PH" };
 
@@ -6,6 +8,7 @@ export default function FeedbackPage({ searchParams }: { searchParams: { ref?: s
   const ref = typeof searchParams.ref === "string" ? searchParams.ref.slice(0, 20) : "";
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <HumanTabGate enabled={isHumanCheckEnabled()} />
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-ube-950 sm:text-4xl">How was your ride?</h1>
         <p className="mt-2 text-lg text-zinc-700">

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { HUMAN_COOKIE, HUMAN_HOURS, createHumanToken, isHumanCheckEnabled, verifyTurnstile } from "@/lib/humanCheck";
+import { HUMAN_COOKIE, HUMAN_MINUTES, createHumanToken, isHumanCheckEnabled, verifyTurnstile } from "@/lib/humanCheck";
 import { clientKey, rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const body = z.object({ token: z.string().min(1).max(2048) });
 
-/** Confirms the "I am human" checkbox with Cloudflare, then sets the 24-hour cookie (AC28). */
+/** Confirms the "I am human" checkbox with Cloudflare, then sets the 1-hour pass cookie (AC28). */
 export async function POST(req: Request) {
   if (!isHumanCheckEnabled()) return NextResponse.json({ ok: true, skipped: true });
   if (!rateLimit(`human:${clientKey(req)}`, 20, 10 * 60_000)) {
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: HUMAN_HOURS * 3600,
+    maxAge: HUMAN_MINUTES * 60,
   });
   return res;
 }
