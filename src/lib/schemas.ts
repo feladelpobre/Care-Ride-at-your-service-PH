@@ -44,6 +44,17 @@ export type AiExtraction = z.infer<typeof aiExtractionSchema>;
 const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
 const ymd = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Phone GPS position for the pickup (AC29). Used only to calculate the distance:
+ * rounded to 3 decimals (~110 m), never stored or logged (spec §7).
+ */
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+export const gpsSchema = z.object({
+  lat: z.number().min(-90).max(90).transform(round3),
+  lng: z.number().min(-180).max(180).transform(round3),
+});
+export type Gps = z.infer<typeof gpsSchema>;
+
 /** Strict, normalised extraction used by the rest of the app. */
 export const tripExtractionSchema = z.object({
   pickupArea: z.string().max(120).nullable(),
@@ -70,7 +81,12 @@ export const assessmentSchema = z.object({
   crewSize: z.union([z.literal(1), z.literal(2)]),
   assistChecklist: z.array(z.string()),
   travelMinutes: z.number().int(),
+  /** The rider's pick-up time when given, otherwise the suggested one (AC31). */
   pickupTime: z.string().regex(hhmm).nullable(),
+  /** The latest safe pick-up time worked back from the appointment. */
+  suggestedPickupTime: z.string().regex(hhmm).nullable(),
+  /** Shown when the rider's pick-up time is later than the suggested one. */
+  pickupWarning: z.string().nullable(),
   pickupBreakdown: z.array(z.string()),
   companionHours: z.number().int().min(0).max(12),
   quote: z.object({
@@ -95,6 +111,10 @@ export const tripOptionsSchema = z.object({
   companionHours: z.coerce.number().int().min(0).max(12),
   wheelchairRental: z.boolean().default(false),
   seniorPwdDiscount: z.boolean().default(false),
+  /** Phone GPS pickup position, only for the distance (AC29); null when typed. */
+  pickupGps: gpsSchema.nullable().default(null),
+  /** The rider's preferred pick-up time (AC31); null to use the suggested one. */
+  requestedPickupTime: z.string().regex(hhmm).nullable().default(null),
 });
 export type TripOptionsInput = z.infer<typeof tripOptionsSchema>;
 
@@ -141,6 +161,13 @@ export const planRequestSchema = z.object({
    * and drives the system distance calculation. Required by /api/plan after the emergency gate (AC25).
    */
   destination: z.string().transform(sanitizeText).pipe(z.string().max(120)).optional(),
+  /** Step-1 fields filled in by the caregiver; they replace the AI's guesses (AC30). */
+  mobility: z.enum(MOBILITY).optional(),
+  appointmentDate: z.string().regex(ymd, "Please choose the appointment date.").optional(),
+  appointmentTime: z.string().regex(hhmm, "Please choose the appointment time.").optional(),
+  /** Preferred pick-up time (AC31). */
+  pickupTime: z.string().regex(hhmm, "Please choose a valid pick-up time.").optional(),
+  pickupGps: gpsSchema.optional(),
   companionHours: z.coerce.number().int().min(0).max(12).optional(),
   /** Tick boxes in step 1 */
   addons: z

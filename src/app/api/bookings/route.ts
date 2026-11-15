@@ -34,6 +34,8 @@ export async function POST(req: Request) {
     companionHours: plan.options.companionHours,
     wheelchairRental: plan.options.wheelchairRental,
     seniorPwdDiscount: plan.options.seniorPwdDiscount,
+    pickupGps: plan.options.pickupGps,
+    requestedPickupTime: plan.options.requestedPickupTime,
   });
   const assessment = fresh.assessment;
 

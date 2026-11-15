@@ -91,6 +91,21 @@ export function roadKm(a: Place, b: Place): number {
   return Math.max(2, Math.round(haversineKm(a, b) * 1.35 * 2) / 2);
 }
 
+/** Rough box around Metro Manila and nearby Rizal/Cavite/Laguna towns we serve. */
+export const SERVICE_AREA = { minLat: 14.2, maxLat: 14.9, minLng: 120.8, maxLng: 121.35 };
+
+/** True when a GPS position is inside the service area (positions outside it are ignored). */
+export function isInServiceArea(g: { lat: number; lng: number } | null | undefined): g is { lat: number; lng: number } {
+  return Boolean(
+    g && g.lat >= SERVICE_AREA.minLat && g.lat <= SERVICE_AREA.maxLat && g.lng >= SERVICE_AREA.minLng && g.lng <= SERVICE_AREA.maxLng,
+  );
+}
+
+/** The city centre closest to a GPS position, to name the pickup area. */
+export function nearestCity(g: { lat: number; lng: number }): Place {
+  return CITIES.reduce((best, c) => (haversineKm(g, c) < haversineKm(g, best) ? c : best), CITIES[0]);
+}
+
 export type RouteEstimate = {
   distanceKm: number;
   source: "estimated" | "default";
@@ -106,8 +121,16 @@ export const DEFAULT_KM = 10;
  * Estimate route distance. Destination order: a known hospital, else the area (city/barangay
  * alias) written in the destination, else 10 km. If no destination is given, the nearest hospital.
  */
-export function estimateRoute(pickupArea: string | null, destination: string | null): RouteEstimate {
-  const city = findCity(pickupArea);
+export function estimateRoute(
+  pickupArea: string | null,
+  destination: string | null,
+  gps?: { lat: number; lng: number } | null,
+): RouteEstimate {
+  // Phone GPS beats the typed area (AC29): measure from the exact pickup point
+  const fromGps = isInServiceArea(gps);
+  const city: Place | null = fromGps
+    ? { name: `your GPS location (near ${nearestCity(gps).name})`, aliases: [], lat: gps.lat, lng: gps.lng }
+    : findCity(pickupArea);
   const hospital = findHospital(destination);
   const nearest = city
     ? HOSPITALS.map((h) => ({ name: h.name, km: roadKm(city, h) }))

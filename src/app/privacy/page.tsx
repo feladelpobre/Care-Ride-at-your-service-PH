@@ -36,7 +36,11 @@ export default function PrivacyPage() {
             Your <strong>email address</strong> (required). We use it only to send your booking reference and trip details, and one
             reminder about 2 hours before pickup. No newsletters or marketing. Dispatch screens show it partly hidden (e.g. ma***@gmail.com).
           </li>
-          <li>Pickup <strong>area</strong> (barangay/city), hospital, appointment date and time. We do not ask for a full home address.</li>
+          <li>Pickup <strong>area</strong> (barangay/city), hospital, appointment date and time, and your preferred pick-up time. We do not ask for a full home address.</li>
+          <li>
+            If you tap <strong>Use my current location</strong>: your phone&apos;s GPS position, rounded to about 100 metres. We use it
+            only to calculate the distance and price, and we do not save or log it. You can type the barangay and city instead.
+          </li>
           <li>
             The patient&apos;s <strong>mobility needs</strong> (for example: uses a wheelchair, number of stairs, oxygen tank).
             This is health information, which the law treats as <strong>sensitive personal information</strong>.

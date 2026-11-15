@@ -97,6 +97,16 @@ export function distanceSurcharge(vehicle: "sedan_assist" | "wav_ramp_van", km: 
   return { label: "Over 40 km", amount: last[vehicle] + Math.ceil(km - 40) * OVER_40_PER_KM[vehicle] };
 }
 
+/**
+ * The caregiver-hours stepper (AC30): − / + by one hour, from "none" (0) straight to the
+ * 2-hour minimum, up to 12. Stepping down from the minimum turns the caregiver off.
+ */
+export function nextCompanionHours(current: number, delta: 1 | -1): number {
+  const h = companionHoursBillable(current);
+  if (delta > 0) return h === 0 ? COMPANION_MIN_HOURS : Math.min(12, h + 1);
+  return h <= COMPANION_MIN_HOURS ? 0 : h - 1;
+}
+
 /** Billable companion hours: 0 = not requested; otherwise at least the minimum, max 12. */
 export function companionHoursBillable(hours: number): number {
   if (!hours || hours <= 0) return 0;
@@ -168,6 +178,8 @@ export function buildChecklist(x: TripExtraction, vehicle: Assessment["vehicle"]
 export type TripOptions = {
   distanceKm: number;
   companionHours: number;
+  /** The rider's preferred pick-up time (AC31). */
+  requestedPickupTime?: string | null;
   wheelchairRental?: boolean;
   seniorPwdDiscount?: boolean;
 };
@@ -176,13 +188,24 @@ export function assess(x: TripExtraction, opts: TripOptions): Assessment {
   const vehicle = chooseVehicle(x);
   const crewSize = chooseCrew(x);
   const travelMinutes = estimateTravelMinutes(opts.distanceKm);
-  const { pickupTime, breakdown } = computePickupTime({
+  const { pickupTime: suggestedPickupTime, breakdown } = computePickupTime({
     appointmentTime: x.appointmentTime,
     travelMinutes,
     tripPurpose: x.tripPurpose,
     vehicle,
     crewSize,
   });
+  // The rider's own pick-up time wins; warn when it's later than the safe time (AC31)
+  const requested = opts.requestedPickupTime ?? null;
+  const pickupTime = requested ?? suggestedPickupTime;
+  let pickupWarning: string | null = null;
+  if (requested && suggestedPickupTime && toMinutes(requested) > toMinutes(suggestedPickupTime)) {
+    pickupWarning =
+      x.appointmentTime && toMinutes(requested) >= toMinutes(x.appointmentTime)
+        ? `Pick-up at ${requested} is at or after the ${x.appointmentTime} appointment. Please choose ${suggestedPickupTime} or earlier.`
+        : `Pick-up at ${requested} may be too late for the ${x.appointmentTime} appointment. We suggest ${suggestedPickupTime} or earlier.`;
+  }
+  if (requested) breakdown.push(`Your requested pick-up: ${requested}${pickupWarning ? " (later than suggested)" : ""}`);
   let blockReason: string | null = null;
   if (x.emergencySignals) blockReason = "Possible emergency detected. Call 911 instead of booking.";
   else if (vehicle === "not_supported") blockReason = "Bedbound/stretcher patients need an ambulance service. Please contact one directly.";
@@ -208,6 +231,8 @@ export function assess(x: TripExtraction, opts: TripOptions): Assessment {
     assistChecklist: checklist,
     travelMinutes,
     pickupTime,
+    suggestedPickupTime,
+    pickupWarning,
     pickupBreakdown: breakdown,
     companionHours,
     quote,

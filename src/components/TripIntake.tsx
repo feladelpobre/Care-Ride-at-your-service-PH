@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Accessibility, BadgePercent, HeartHandshake } from "lucide-react";
+import { Accessibility, BadgePercent, HeartHandshake, LocateFixed, Minus, Plus } from "lucide-react";
 import { track } from "@vercel/analytics";
 import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
-import { HOSPITALS } from "@/lib/geo";
+import { HOSPITALS, isInServiceArea, nearestCity } from "@/lib/geo";
 import { formatManilaDateTime } from "@/lib/format";
 import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
 import {
@@ -17,6 +17,7 @@ import {
   DEFAULT_COMPANION_HOURS,
   DISTANCE_BANDS,
   WHEELCHAIR_RENTAL_FEE,
+  nextCompanionHours,
 } from "@/lib/rules";
 
 /** Shown in grey inside the trip box as a guide (AC25); there are no "Try example" buttons. */
@@ -39,6 +40,14 @@ export default function TripIntake() {
   const [description, setDescription] = useState("");
   const [pickupLocation, setPickupLocation] = useState("");
   const [destination, setDestination] = useState("");
+  // Step-1 fields that replace the AI's guesses (AC30, AC31)
+  const [mobility, setMobility] = useState<TripExtraction["mobility"]>("unknown");
+  const [appointmentDate, setAppointmentDate] = useState("");
+  const [appointmentTime, setAppointmentTime] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
+  // Phone GPS for the pickup (AC29): rounded, used only for the distance, never stored
+  const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<{ busy: boolean; message: string | null }>({ busy: false, message: null });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
@@ -50,7 +59,6 @@ export default function TripIntake() {
 
   // Step 1 tick boxes
   const [wantWheelchair, setWantWheelchair] = useState(false);
-  const [wantCompanion, setWantCompanion] = useState(false);
   const [seniorPwd, setSeniorPwd] = useState(false);
 
   const [contactName, setContactName] = useState("");
@@ -66,11 +74,59 @@ export default function TripIntake() {
   const plan: TripPlan | null = useMemo(() => {
     if (!extraction || !aiPlan) return null;
     return buildPlan(extraction, {
+      pickupGps: gps,
+      requestedPickupTime: pickupTime || null,
       companionHours,
       wheelchairRental: wantWheelchair,
       seniorPwdDiscount: seniorPwd,
     });
-  }, [extraction, aiPlan, companionHours, wantWheelchair, seniorPwd]);
+  }, [extraction, aiPlan, gps, pickupTime, companionHours, wantWheelchair, seniorPwd]);
+
+  // Live suggestion for the pick-up time while step 1 is being filled in (AC31)
+  const suggestedPickup: string | null = useMemo(() => {
+    if (!appointmentTime || mobility === "unknown" || destination.trim().length < 3 || (!gps && pickupLocation.trim().length < 3)) return null;
+    const draft: TripExtraction = {
+      pickupArea: pickupLocation,
+      destination,
+      appointmentDate: appointmentDate || null,
+      appointmentTime,
+      tripPurpose: "other",
+      mobility,
+      floorsWithoutElevator: 0,
+      equipment: [],
+      companions: 0,
+      recurring: false,
+      recurrenceNote: null,
+      wantsHospitalCompanion: false,
+      emergencySignals: false,
+      missingInfo: [],
+      caregiverSummary: "",
+    };
+    return buildPlan(draft, { pickupGps: gps }).assessment.suggestedPickupTime;
+  }, [appointmentTime, appointmentDate, mobility, destination, pickupLocation, gps]);
+
+  function locateMe() {
+    if (!("geolocation" in navigator)) {
+      setGpsStatus({ busy: false, message: "This phone or browser can't share its location. Please type the barangay and city." });
+      return;
+    }
+    setGpsStatus({ busy: true, message: null });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const g = { lat: Math.round(pos.coords.latitude * 1000) / 1000, lng: Math.round(pos.coords.longitude * 1000) / 1000 };
+        if (!isInServiceArea(g)) {
+          setGps(null);
+          setGpsStatus({ busy: false, message: "Your location looks outside our Metro Manila service area. Please type the pickup barangay and city." });
+          return;
+        }
+        setGps(g);
+        setPickupLocation(`Near ${nearestCity(g).name} (GPS)`);
+        setGpsStatus({ busy: false, message: "Location found. We measure the distance from here; your exact location isn't saved." });
+      },
+      () => setGpsStatus({ busy: false, message: "We couldn't get your location. Allow location access, or type the barangay and city." }),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  }
 
   // Required details (AC20): the request button stays off until these are filled
   const missing: RequiredField[] = extraction ? missingRequiredDetails(extraction) : [];
@@ -92,7 +148,13 @@ export default function TripIntake() {
           description,
           pickupLocation,
           destination,
-          addons: { wheelchair: wantWheelchair, companion: wantCompanion, seniorPwd },
+          mobility,
+          appointmentDate: appointmentDate || undefined,
+          appointmentTime: appointmentTime || undefined,
+          pickupTime: pickupTime || undefined,
+          pickupGps: gps ?? undefined,
+          companionHours,
+          addons: { wheelchair: wantWheelchair, companion: companionHours > 0, seniorPwd },
         }),
       });
       const data = await res.json();
@@ -106,7 +168,6 @@ export default function TripIntake() {
       setAiPlan(p);
       setExtraction(p.extraction);
       setCompanionHours(p.options.companionHours);
-      if (p.options.companionHours > 0) setWantCompanion(true);
       track("trip_analyzed", {
         vehicle: p.assessment.vehicle,
         companion: p.options.companionHours > 0,
@@ -178,15 +239,31 @@ export default function TripIntake() {
             id="pickup"
             className="input"
             value={pickupLocation}
-            onChange={(e) => setPickupLocation(e.target.value)}
+            onChange={(e) => {
+              setPickupLocation(e.target.value);
+              if (gps) {
+                setGps(null);
+                setGpsStatus({ busy: false, message: null });
+              }
+            }}
             maxLength={120}
             autoComplete="address-level3"
             placeholder="Barangay and city, e.g., Kapitolyo, Pasig"
             required
             aria-describedby="pickup-help"
           />
+          <button type="button" className="btn-ghost mt-2 inline-flex min-h-11 items-center gap-2 text-sm" onClick={locateMe} disabled={gpsStatus.busy}>
+            <LocateFixed aria-hidden size={18} />
+            {gpsStatus.busy ? "Finding your location…" : gps ? "Update my location" : "Use my current location (GPS)"}
+          </button>
+          {gpsStatus.message && (
+            <p role="status" className={`mt-1 text-sm ${gps ? "text-ube-800" : "text-amber-800"}`}>
+              {gpsStatus.message}
+            </p>
+          )}
           <p id="pickup-help" className="mt-1 text-sm text-zinc-600">
-            Where should the van pick up the patient? Barangay and city are enough; the driver calls you for the exact address.
+            Where should the van pick up the patient? Use GPS if you&apos;re there now, or type the barangay and city; the driver calls you
+            for the exact address.
           </p>
         </div>
         <div>
@@ -215,8 +292,85 @@ export default function TripIntake() {
             Mandaluyong). We calculate the distance for you.
           </p>
         </div>
+        <div>
+          <label htmlFor="mobility1" className="label">
+            How the patient moves <span className="font-normal text-zinc-600">(required)</span>
+          </label>
+          <select id="mobility1" className="input" value={mobility} onChange={(e) => setMobility(e.target.value as TripExtraction["mobility"])} required>
+            {MOBILITY.map((m) => (
+              <option key={m} value={m} disabled={m === "unknown"}>
+                {MOBILITY_LABEL[m]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="rounded-2xl border-2 border-ube-200 bg-ube-50 p-4">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-ube-700">
+              <HeartHandshake aria-hidden size={24} />
+            </span>
+            <div>
+              <p id="caregiver-label" className="text-base font-bold text-ube-950">
+                Hospital caregiver: how many hours?
+              </p>
+              <p className="text-sm text-zinc-700">
+                A trained caregiver stays with the patient inside the hospital (registration, waiting, transfers) until the appointment is
+                done. {peso(COMPANION_RATE_PER_HOUR)}/hour, minimum {COMPANION_MIN_HOURS} hours. Choose &quot;None&quot; if a family member stays.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3">
+            <HoursStepper value={companionHours} onChange={setCompanionHours} labelledBy="caregiver-label" />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="apptDate" className="label">
+              Appointment date <span className="font-normal text-zinc-600">(required)</span>
+            </label>
+            <input id="apptDate" type="date" className="input" value={appointmentDate} min={todayManila()} onChange={(e) => setAppointmentDate(e.target.value)} required />
+          </div>
+          <div>
+            <label htmlFor="apptTime" className="label">
+              Appointment time <span className="font-normal text-zinc-600">(required)</span>
+            </label>
+            <input id="apptTime" type="time" className="input" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} required />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="pickTime" className="label">
+              Pick-up time <span className="font-normal text-zinc-600">(same day as the appointment)</span>
+            </label>
+            <input
+              id="pickTime"
+              type="time"
+              className="input sm:max-w-[50%]"
+              value={pickupTime}
+              onChange={(e) => setPickupTime(e.target.value)}
+              aria-describedby="pickTime-help"
+            />
+            <p id="pickTime-help" className="mt-1 text-sm text-zinc-600">
+              {suggestedPickup ? (
+                <>
+                  We suggest <strong>{suggestedPickup}</strong> or earlier so the patient arrives on time.{" "}
+                  {!pickupTime && (
+                    <button type="button" className="font-bold text-ube-800 underline" onClick={() => setPickupTime(suggestedPickup)}>
+                      Use {suggestedPickup}
+                    </button>
+                  )}
+                </>
+              ) : (
+                "Leave it blank and we'll suggest a time once the places, mobility and appointment time are filled in."
+              )}
+            </p>
+            {pickupTime && suggestedPickup && pickupTime > suggestedPickup && (
+              <p role="alert" className="mt-1 text-sm font-medium text-amber-800">
+                {pickupTime} may be too late. We suggest {suggestedPickup} or earlier.
+              </p>
+            )}
+          </div>
+        </div>
         <fieldset className="pt-2">
-          <legend className="mb-2 text-base font-bold text-ube-950">What would you like to avail? Tick all that apply.</legend>
+          <legend className="mb-2 text-base font-bold text-ube-950">Also add (tick all that apply)</legend>
           <div className="space-y-2">
             <Tick
               checked={wantWheelchair}
@@ -224,16 +378,6 @@ export default function TripIntake() {
               icon={<Accessibility aria-hidden size={24} />}
               title="Wheelchair"
               detail={`We bring a clean wheelchair for the patient to use during the trip and inside the hospital. ${peso(WHEELCHAIR_RENTAL_FEE)} per trip.`}
-            />
-            <Tick
-              checked={wantCompanion}
-              onChange={(v) => {
-                setWantCompanion(v);
-                if (extraction) setCompanionHours(v ? DEFAULT_COMPANION_HOURS[extraction.tripPurpose] : 0);
-              }}
-              icon={<HeartHandshake aria-hidden size={24} />}
-              title="Hospital companion / caregiver"
-              detail={`A trained caregiver stays with the patient inside the hospital (registration, waiting, transfers) until the appointment is done. ${peso(COMPANION_RATE_PER_HOUR)}/hour, minimum ${COMPANION_MIN_HOURS} hours.`}
             />
             <Tick
               checked={seniorPwd}
@@ -244,7 +388,19 @@ export default function TripIntake() {
             />
           </div>
         </fieldset>
-        <button type="submit" className="btn-primary w-full sm:w-auto" disabled={loading || description.trim().length < 20 || pickupLocation.trim().length < 3 || destination.trim().length < 3}>
+        <button
+          type="submit"
+          className="btn-primary w-full sm:w-auto"
+          disabled={
+            loading ||
+            description.trim().length < 20 ||
+            pickupLocation.trim().length < 3 ||
+            destination.trim().length < 3 ||
+            mobility === "unknown" ||
+            !appointmentDate ||
+            !appointmentTime
+          }
+        >
           {loading ? "Analysing trip…" : "Plan my ride"}
         </button>
       </form>
@@ -342,7 +498,26 @@ export default function TripIntake() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <Stat label="Vehicle" value={plan.assessment.vehicle === "wav_ramp_van" ? "Wheelchair van" : "Assist sedan"} sub={plan.assessment.vehicleLabel} />
                 <Stat label="Crew" value={`${plan.assessment.crewSize} ${plan.assessment.crewSize === 1 ? "person" : "people"}`} sub={plan.assessment.crewSize === 2 ? "Includes stair assist" : "Driver assists boarding"} />
-                <Stat label="Pickup time" value={plan.assessment.pickupTime ?? "Add a time"} sub={`${plan.assessment.travelMinutes} min travel estimate`} />
+                <Stat
+                  label="Pickup time"
+                  value={plan.assessment.pickupTime ?? "Add a time"}
+                  sub={
+                    plan.options.requestedPickupTime
+                      ? `Your time · we suggest ${plan.assessment.suggestedPickupTime ?? "–"} · ${plan.assessment.travelMinutes} min travel`
+                      : `Suggested · ${plan.assessment.travelMinutes} min travel estimate`
+                  }
+                />
+              </div>
+            )}
+
+            {!plan.assessment.blocked && plan.assessment.pickupWarning && (
+              <div role="alert" className="rounded-lg border-2 border-amber-400 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+                {plan.assessment.pickupWarning}{" "}
+                {plan.assessment.suggestedPickupTime && (
+                  <button type="button" className="font-bold underline" onClick={() => setPickupTime(plan.assessment.suggestedPickupTime!)}>
+                    Use {plan.assessment.suggestedPickupTime}
+                  </button>
+                )}
               </div>
             )}
 
@@ -399,40 +574,17 @@ export default function TripIntake() {
               </div>
 
               <fieldset className="rounded-2xl border-2 border-ube-200 bg-ube-50 p-4">
-                <legend className="px-1 text-base font-bold text-ube-950">Hospital companion / caregiver</legend>
-                <label className="flex min-h-11 cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-5 w-5 accent-ube-800"
-                    checked={companionHours > 0}
-                    onChange={(e) => {
-                      setWantCompanion(e.target.checked);
-                      setCompanionHours(e.target.checked ? DEFAULT_COMPANION_HOURS[extraction.tripPurpose] : 0);
-                    }}
-                  />
-                  <span className="text-sm text-zinc-700">
-                    A trained companion stays with the patient <strong>inside the hospital</strong> (registration, waiting,
-                    wheelchair transfers) until the appointment is done. {peso(COMPANION_RATE_PER_HOUR)}/hour, minimum{" "}
-                    {COMPANION_MIN_HOURS} hours.
-                  </span>
-                </label>
-                {companionHours > 0 && (
-                  <div className="mt-3 flex items-center gap-3">
-                    <label htmlFor="hours" className="text-sm font-medium text-zinc-700">
-                      Hours
-                    </label>
-                    <input
-                      id="hours"
-                      type="number"
-                      min={COMPANION_MIN_HOURS}
-                      max={12}
-                      className="input w-24"
-                      value={companionHours}
-                      onChange={(e) => setCompanionHours(Math.max(COMPANION_MIN_HOURS, Math.min(12, Math.round(Number(e.target.value) || 0))))}
-                    />
-                    <span className="text-xs text-zinc-500">Suggested for {extraction.tripPurpose}: {DEFAULT_COMPANION_HOURS[extraction.tripPurpose]} h</span>
-                  </div>
-                )}
+                <legend id="caregiver-label-3" className="px-1 text-base font-bold text-ube-950">
+                  Hospital caregiver hours
+                </legend>
+                <p className="text-sm text-zinc-700">
+                  Stays with the patient <strong>inside the hospital</strong> until the appointment is done.{" "}
+                  {peso(COMPANION_RATE_PER_HOUR)}/hour, minimum {COMPANION_MIN_HOURS} hours. Usual for {extraction.tripPurpose}:{" "}
+                  {DEFAULT_COMPANION_HOURS[extraction.tripPurpose]} h.
+                </p>
+                <div className="mt-3">
+                  <HoursStepper value={companionHours} onChange={setCompanionHours} labelledBy="caregiver-label-3" />
+                </div>
               </fieldset>
 
               <div className="grid gap-2 sm:grid-cols-2">
@@ -701,4 +853,43 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
 /** Light client-side check; the server validates properly (AC22). */
 function isEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
+
+/**
+ * Caregiver hours as big − / + buttons (AC30). The old number box clamped on every keystroke,
+ * so on phones the value jumped back and couldn't be changed.
+ */
+function HoursStepper({ value, onChange, labelledBy }: { value: number; onChange: (v: number) => void; labelledBy: string }) {
+  const shown = value > 0 ? `${value} hour${value === 1 ? "" : "s"}` : "None";
+  return (
+    <div role="group" aria-labelledby={labelledBy} className="flex items-center gap-3">
+      <button
+        type="button"
+        className="grid h-12 w-12 place-items-center rounded-xl border-2 border-ube-300 bg-white text-ube-800 disabled:opacity-40"
+        onClick={() => onChange(nextCompanionHours(value, -1))}
+        disabled={value === 0}
+        aria-label="One hour less"
+      >
+        <Minus aria-hidden size={22} />
+      </button>
+      <output aria-live="polite" className="min-w-[6.5rem] text-center text-lg font-bold tabular-nums text-ube-950">
+        {shown}
+      </output>
+      <button
+        type="button"
+        className="grid h-12 w-12 place-items-center rounded-xl border-2 border-ube-300 bg-white text-ube-800 disabled:opacity-40"
+        onClick={() => onChange(nextCompanionHours(value, 1))}
+        disabled={value >= 12}
+        aria-label="One hour more"
+      >
+        <Plus aria-hidden size={22} />
+      </button>
+      {value > 0 && <span className="text-sm text-zinc-700">{peso(value * COMPANION_RATE_PER_HOUR)}</span>}
+    </div>
+  );
+}
+
+/** Today's date in Manila as YYYY-MM-DD (the earliest appointment date). */
+function todayManila(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }

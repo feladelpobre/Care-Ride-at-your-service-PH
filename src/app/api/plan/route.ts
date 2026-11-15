@@ -24,7 +24,8 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { description, pickupLocation, destination, companionHours, addons } = parsed.data;
+  const { description, pickupLocation, destination, companionHours, addons, mobility, appointmentDate, appointmentTime, pickupTime, pickupGps } =
+    parsed.data;
 
   // 1) Emergency gate BEFORE the AI (AC2)
   if (detectEmergency(description).emergency) {
@@ -65,16 +66,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ emergency: true, message: EMERGENCY_MESSAGE });
   }
 
-  // The caregiver's own pickup and destination fields win over the AI's guesses (AC21, AC25)
+  // The caregiver's own step-1 fields win over the AI's guesses (AC21, AC25, AC30)
   extraction = {
     ...extraction,
     pickupArea: pickupLocation.trim(),
     destination: destination.trim(),
-    missingInfo: extraction.missingInfo.filter((m) => !/pickup|destination|hospital|clinic/i.test(m)),
+    ...(mobility && mobility !== "unknown" ? { mobility } : {}),
+    ...(appointmentDate ? { appointmentDate } : {}),
+    ...(appointmentTime ? { appointmentTime } : {}),
   };
+  extraction.missingInfo = extraction.missingInfo.filter(
+    (m) =>
+      !/pickup|destination|hospital|clinic/i.test(m) &&
+      // Only drop reminders the caregiver has just answered in step 1
+      !(mobility && mobility !== "unknown" && /moves|mobility|wheelchair|walker/i.test(m)) &&
+      !(appointmentDate && /date/i.test(m)) &&
+      !(appointmentTime && /appointment time/i.test(m)),
+  );
 
   // 4) Deterministic rules: system-calculated distance (AC26), pricing, vehicle, crew, pickup time
   const plan = buildPlan(extraction, {
+    pickupGps: pickupGps ?? null,
+    requestedPickupTime: pickupTime ?? null,
     companionHours,
     companion: addons.companion,
     wheelchairRental: addons.wheelchair,
