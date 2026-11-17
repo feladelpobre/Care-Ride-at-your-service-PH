@@ -204,7 +204,7 @@ export default function CaseFilePage() {
           <MiniCard title="Open questions" text="Which operators accept third-party bookings · weekly dialysis auto-booking · fee model · LTFRB franchise or TNC route." />
         </div>
         <p className="text-sm">
-          One-page PRD: <a className="font-bold text-ube-800 underline" href={doc("docs/02-PRD.md")}>docs/02-PRD.md</a> · Spec with AC1–AC33:{" "}
+          One-page PRD: <a className="font-bold text-ube-800 underline" href={doc("docs/02-PRD.md")}>docs/02-PRD.md</a> · Spec with AC1–AC34:{" "}
           <a className="font-bold text-ube-800 underline" href={doc("spec.md")}>spec.md</a>
         </p>
       </Section>
@@ -341,7 +341,7 @@ export default function CaseFilePage() {
               {[
                 ["Problem & Validation", "docs/01-idea-validation.md|Validation report", "7 steps, real evidence, specific user, why now"],
                 ["PRD Quality", "docs/02-PRD.md|PRD", "6 components, testable acceptance criteria"],
-                ["Spec & Architecture", "spec.md|spec.md", "5 spec elements, AC1–AC33, CLAUDE.md, .cursorrules"],
+                ["Spec & Architecture", "spec.md|spec.md", "5 spec elements, AC1–AC34, CLAUDE.md, .cursorrules"],
                 ["Working Application", "README.md|README", "Live app, tested on Windows, iOS and Android"],
                 ["CI/CD & Engineering", ".github/workflows/ci.yml|CI workflow", "GitHub Actions, no secrets, commit history, README"],
               ].map(([c, path, what]) => (

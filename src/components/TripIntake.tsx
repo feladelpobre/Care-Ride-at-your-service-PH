@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Accessibility, BadgePercent, HeartHandshake, LocateFixed, Minus, Plus } from "lucide-react";
 import { track } from "@vercel/analytics";
@@ -10,6 +10,7 @@ import { buildPlan } from "@/lib/plan";
 import { HOSPITALS, gpsPlaceName, isInServiceArea } from "@/lib/geo";
 import { lookupPlace } from "@/lib/placeName";
 import { firstUnfinished, isUnlocked, type Step1Fields } from "@/lib/stepGate";
+import { formatDateText, formatTimeText, maskDate, parseDateText, parseTimeText } from "@/lib/dateText";
 import { formatManilaDateTime } from "@/lib/format";
 import { detectEmergency, EMERGENCY_MESSAGE } from "@/lib/emergency";
 import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
@@ -387,33 +388,26 @@ export default function TripIntake() {
             <label htmlFor="apptDate" className="label">
               Appointment date <span className="font-normal text-zinc-600">(required)</span>
             </label>
-            <input id="apptDate" type="date" className="input" value={appointmentDate} min={todayManila()} onChange={(e) => setAppointmentDate(e.target.value)} required />
+            <DateBox id="apptDate" value={appointmentDate} onChange={setAppointmentDate} min={todayManila()} />
           </Gate>
           <Gate open={open("appointmentTime")} current={nextUp?.key === "appointmentTime"} needs="the appointment date">
             <label htmlFor="apptTime" className="label">
               Appointment time <span className="font-normal text-zinc-600">(required)</span>
             </label>
-            <input id="apptTime" type="time" className="input" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} required />
+            <TimeBox id="apptTime" value={appointmentTime} onChange={setAppointmentTime} />
           </Gate>
           <Gate open={open("pickupTime")} needs="the appointment time" className="sm:col-span-2">
             <label htmlFor="pickTime" className="label">
               Pick-up time <span className="font-normal text-zinc-600">(same day as the appointment)</span>
             </label>
-            <input
-              id="pickTime"
-              type="time"
-              className="input sm:max-w-[50%]"
-              value={pickupTime}
-              onChange={(e) => setPickupTime(e.target.value)}
-              aria-describedby="pickTime-help"
-            />
+            <TimeBox id="pickTime" value={pickupTime} onChange={setPickupTime} optional className="sm:max-w-[50%]" describedBy="pickTime-help" />
             <p id="pickTime-help" className="mt-1 text-sm text-zinc-600">
               {suggestedPickup ? (
                 <>
-                  We suggest <strong>{suggestedPickup}</strong> or earlier so the patient arrives on time.{" "}
+                  We suggest <strong>{formatTimeText(suggestedPickup)}</strong> or earlier so the patient arrives on time.{" "}
                   {!pickupTime && (
                     <button type="button" className="font-bold text-ube-800 underline" onClick={() => setPickupTime(suggestedPickup)}>
-                      Use {suggestedPickup}
+                      Use {formatTimeText(suggestedPickup)}
                     </button>
                   )}
                 </>
@@ -423,7 +417,7 @@ export default function TripIntake() {
             </p>
             {pickupTime && suggestedPickup && pickupTime > suggestedPickup && (
               <p role="alert" className="mt-1 text-sm font-medium text-amber-800">
-                {pickupTime} may be too late. We suggest {suggestedPickup} or earlier.
+                {formatTimeText(pickupTime)} may be too late. We suggest {formatTimeText(suggestedPickup)} or earlier.
               </p>
             )}
           </Gate>
@@ -579,7 +573,7 @@ export default function TripIntake() {
                 {plan.assessment.pickupWarning}{" "}
                 {plan.assessment.suggestedPickupTime && (
                   <button type="button" className="font-bold underline" onClick={() => setPickupTime(plan.assessment.suggestedPickupTime!)}>
-                    Use {plan.assessment.suggestedPickupTime}
+                    Use {formatTimeText(plan.assessment.suggestedPickupTime)}
                   </button>
                 )}
               </div>
@@ -1004,6 +998,102 @@ function Gate({
       <fieldset disabled={!open} className={`min-w-0 ${open ? "" : "pointer-events-none select-none opacity-40 grayscale"}`}>
         {children}
       </fieldset>
+    </div>
+  );
+}
+
+/**
+ * Typed date box, MM/DD/YYYY (AC34): faster than scrolling the phone's date wheel.
+ * Slashes are added while typing; the app stores YYYY-MM-DD only when the date is real and not in the past.
+ */
+function DateBox({ id, value, onChange, min }: { id: string; value: string; onChange: (iso: string) => void; min: string }) {
+  const [text, setText] = useState(formatDateText(value));
+  // Keep the box in step if the date is changed elsewhere
+  useEffect(() => {
+    if (parseDateText(text) !== value && value) setText(formatDateText(value));
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  const iso = parseDateText(text);
+  const error =
+    text.length >= 10 && !iso ? "Not a real date. Use MM/DD/YYYY, e.g., 11/20/2026." : iso && iso < min ? "Choose today or a later date." : null;
+  return (
+    <div>
+      <input
+        id={id}
+        className={`input ${error ? "border-2 border-red-500" : ""}`}
+        inputMode="numeric"
+        autoComplete="off"
+        placeholder="MM/DD/YYYY"
+        maxLength={10}
+        value={text}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={`${id}-hint`}
+        onChange={(e) => {
+          const next = maskDate(e.target.value);
+          setText(next);
+          const parsed = parseDateText(next);
+          onChange(parsed && parsed >= min ? parsed : "");
+        }}
+      />
+      <p id={`${id}-hint`} className={`mt-1 text-sm ${error ? "font-medium text-red-700" : "text-zinc-600"}`}>
+        {error ?? "Type the date as MM/DD/YYYY, e.g., 11/20/2026."}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Typed time box, hh:mm AM/PM (AC34): faster than scrolling the time wheel.
+ * Accepts "9:00 AM", "9am", "2:30pm" or 24-hour "14:30"; the app stores 24-hour HH:mm.
+ */
+function TimeBox({
+  id,
+  value,
+  onChange,
+  optional = false,
+  className = "",
+  describedBy,
+}: {
+  id: string;
+  value: string;
+  onChange: (hhmm: string) => void;
+  optional?: boolean;
+  className?: string;
+  describedBy?: string;
+}) {
+  const [text, setText] = useState(formatTimeText(value));
+  // Keep the box in step when the time is set elsewhere (e.g. "Use 07:50 AM")
+  useEffect(() => {
+    if (parseTimeText(text) !== value) setText(value ? formatTimeText(value) : text);
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [left, setLeft] = useState(false);
+  const parsed = parseTimeText(text);
+  // Only complain once the rider has left the box (or typed AM/PM), not mid-typing
+  const error = text.trim() && !parsed && (left || /m$/i.test(text.trim())) ? "Use hh:mm AM or PM, e.g., 09:00 AM or 2:30 PM." : null;
+  return (
+    <div className={className}>
+      <input
+        id={id}
+        className={`input ${error ? "border-2 border-red-500" : ""}`}
+        autoComplete="off"
+        autoCapitalize="characters"
+        placeholder="hh:mm AM"
+        maxLength={8}
+        value={text}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={[`${id}-hint`, describedBy].filter(Boolean).join(" ")}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(parseTimeText(e.target.value) ?? "");
+        }}
+        onFocus={() => setLeft(false)}
+        onBlur={() => {
+          setLeft(true);
+          if (parsed) setText(formatTimeText(parsed));
+        }}
+      />
+      <p id={`${id}-hint`} className={`mt-1 text-sm ${error ? "font-medium text-red-700" : "text-zinc-600"}`}>
+        {error ?? `Type the time as hh:mm AM or PM, e.g., 09:00 AM or 2:30 PM.${optional ? " Optional." : ""}`}
+      </p>
     </div>
   );
 }
