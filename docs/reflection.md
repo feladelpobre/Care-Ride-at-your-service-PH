@@ -17,12 +17,12 @@ A live, AI-powered web app that helps caregivers in Metro Manila book a wheelcha
 - **Deployment surprises:** a 401 from an OpenRouter key (found by logging the status code, never the key) and an empty dispatcher board caused by Next.js caching.
 - **Privacy:** data minimisation under the Data Privacy Act: pickup *area* only, no diagnoses, masked names.
 
-## Iteration after user testing (Nov 14)
-Trying the live app myself led to a second round:
+## Iteration after user acceptance testing (Nov 12–17)
+Testing the live app on Windows, iOS and Android led to a second round:
 - **Destination is a required field, and the system alone calculates the distance.** Riders were guessing the km, which changed the price. Names match with or without dashes, and unknown clinics are read by their area.
-- **Clearer guidance:** describe the rider and the appointment and pick-up date/time; at most 1 companion; an example placeholder instead of "Try example" buttons.
+- **Step 1 collects everything before "Plan my ride"**, with GPS that fills in the town, − / + caregiver hours that work on phones, and a suggested pick-up time with a late warning; "Try example" buttons replaced by a placeholder.
 - **An "I am human" check** (Cloudflare Turnstile, confirmed on the server) blocks fake requests. I tried it at the booking step so Google could index the home page, then kept it in front of the app, accepting the SEO trade-off.
-- **Lesson:** new criteria (AC25–AC28) and 121 tests guarded the changes, and testing on my own phone showed that the in-app browser and Google's assistant fail the check as "bots" while real Chrome passes.
+- **Lesson:** each fix got an acceptance criterion first (AC25–AC32) and 140 tests guarded the changes. Real phones mattered: the in-app browser and Google's assistant fail the check as "bots", while Chrome and Samsung Internet pass.
 
 ## What I would improve in v2
 Maps-API road distance and traffic-aware ETAs · round-trip and waiting-time pricing for dialysis · SMS one-time codes to verify mobile numbers · operator accounts with SMS/Viber confirmations · the golden-set evaluation in CI · usability tests with 3 caregivers and 2 van operators.
