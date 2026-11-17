@@ -67,7 +67,7 @@ Browser → /api/bookings → validate → RECOMPUTE plan on server → Supabase
 |---|---|
 | **Problem & Validation** | [Idea Validation Report](docs/01-idea-validation.md): all 7 steps, PGH evidence, target user, "why now" (Step 5) |
 | **PRD Quality** | [PRD](docs/02-PRD.md): 6 components (problem, users, core features with acceptance criteria, out of scope, success metrics, open questions) |
-| **Spec & Architecture** | [`spec.md`](spec.md) (context, inputs/outputs, behaviour rules, constraints, AC1–AC32) · [architecture notes](docs/architecture.md) · [`CLAUDE.md`](CLAUDE.md) · [`.cursorrules`](.cursorrules) |
+| **Spec & Architecture** | [`spec.md`](spec.md) (context, inputs/outputs, behaviour rules, constraints, AC1–AC33) · [architecture notes](docs/architecture.md) · [`CLAUDE.md`](CLAUDE.md) · [`.cursorrules`](.cursorrules) |
 | **Working Application** | https://care-ride-at-your-service-ph.vercel.app (QR above) · demo video: DEMO_LINK |
 | **CI/CD & Engineering Quality** | [GitHub Actions](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/actions) (gitleaks → lint → typecheck → 132 tests → build) · no hardcoded secrets · [commit history](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/commits/main) · this README |
 | Reflection (1 page) · v2 issue | [`docs/reflection.md`](docs/reflection.md) · [issue #1](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/issues/1) |
@@ -107,7 +107,7 @@ npm run lint && npm run typecheck && npm run build
 ```
 GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and PR: **gitleaks secret scan → lint → typecheck → tests → build**. Vercel deploys previews for PRs and production from `main`.
 
-Each acceptance criterion in `spec.md` (AC1–AC32) maps to a test file.
+Each acceptance criterion in `spec.md` (AC1–AC33) maps to a test file.
 
 ## Monitoring
 - **Vercel Web Analytics:** visitors, page views, pages, countries, devices

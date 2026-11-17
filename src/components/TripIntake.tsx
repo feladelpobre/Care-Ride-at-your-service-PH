@@ -9,6 +9,7 @@ import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
 import { HOSPITALS, gpsPlaceName, isInServiceArea } from "@/lib/geo";
 import { lookupPlace } from "@/lib/placeName";
+import { firstUnfinished, isUnlocked, type Step1Fields } from "@/lib/stepGate";
 import { formatManilaDateTime } from "@/lib/format";
 import { detectEmergency, EMERGENCY_MESSAGE } from "@/lib/emergency";
 import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
@@ -239,6 +240,11 @@ export default function TripIntake() {
 
   const update = (patch: Partial<TripExtraction>) => setExtraction((x) => (x ? { ...x, ...patch } : x));
 
+  // Step 1 is filled in order (AC33): later parts stay locked until earlier ones are done
+  const step1: Step1Fields = { description, pickupLocation, hasGps: Boolean(gps), destination, mobility, appointmentDate, appointmentTime };
+  const nextUp = firstUnfinished(step1);
+  const open = (key: Parameters<typeof isUnlocked>[1]) => isUnlocked(step1, key);
+
   return (
     <div className="space-y-6">
       {/* Step 1: describe */}
@@ -274,7 +280,7 @@ export default function TripIntake() {
             </a>
           </div>
         )}
-        <div>
+        <Gate open={open("pickup")} needs="the trip description (at least 20 characters)">
           <label htmlFor="pickup" className="label">
             Pickup location <span className="font-normal text-zinc-600">(required)</span>
           </label>
@@ -317,8 +323,8 @@ export default function TripIntake() {
             Where should the van pick up the patient? Use GPS if you&apos;re there now, or type the barangay and city; the driver calls you
             for the exact address.
           </p>
-        </div>
-        <div>
+        </Gate>
+        <Gate open={open("destination")} needs="the pickup location">
           <label htmlFor="destination" className="label">
             Destination: hospital or clinic <span className="font-normal text-zinc-600">(required)</span>
           </label>
@@ -343,8 +349,8 @@ export default function TripIntake() {
             Where is the appointment? Pick from the list, or type the clinic name and its area (e.g., Healthway Clinic,
             Mandaluyong). We calculate the distance for you.
           </p>
-        </div>
-        <div>
+        </Gate>
+        <Gate open={open("mobility")} needs="the destination">
           <label htmlFor="mobility1" className="label">
             How the patient moves <span className="font-normal text-zinc-600">(required)</span>
           </label>
@@ -355,8 +361,8 @@ export default function TripIntake() {
               </option>
             ))}
           </select>
-        </div>
-        <div className="rounded-2xl border-2 border-ube-200 bg-ube-50 p-4">
+        </Gate>
+        <Gate open={open("caregiver")} needs="how the patient moves" className="rounded-2xl border-2 border-ube-200 bg-ube-50 p-4">
           <div className="flex items-start gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-ube-700">
               <HeartHandshake aria-hidden size={24} />
@@ -374,21 +380,21 @@ export default function TripIntake() {
           <div className="mt-3">
             <HoursStepper value={companionHours} onChange={setCompanionHours} labelledBy="caregiver-label" />
           </div>
-        </div>
+        </Gate>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
+          <Gate open={open("appointmentDate")} needs="how the patient moves">
             <label htmlFor="apptDate" className="label">
               Appointment date <span className="font-normal text-zinc-600">(required)</span>
             </label>
             <input id="apptDate" type="date" className="input" value={appointmentDate} min={todayManila()} onChange={(e) => setAppointmentDate(e.target.value)} required />
-          </div>
-          <div>
+          </Gate>
+          <Gate open={open("appointmentTime")} needs="the appointment date">
             <label htmlFor="apptTime" className="label">
               Appointment time <span className="font-normal text-zinc-600">(required)</span>
             </label>
             <input id="apptTime" type="time" className="input" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} required />
-          </div>
-          <div className="sm:col-span-2">
+          </Gate>
+          <Gate open={open("pickupTime")} needs="the appointment time" className="sm:col-span-2">
             <label htmlFor="pickTime" className="label">
               Pick-up time <span className="font-normal text-zinc-600">(same day as the appointment)</span>
             </label>
@@ -419,9 +425,9 @@ export default function TripIntake() {
                 {pickupTime} may be too late. We suggest {suggestedPickup} or earlier.
               </p>
             )}
-          </div>
+          </Gate>
         </div>
-        <fieldset className="pt-2">
+        <fieldset className={`pt-2 ${open("addons") ? "" : "opacity-50"}`} disabled={!open("addons")}>
           <legend className="mb-2 text-base font-bold text-ube-950">Also add (tick all that apply)</legend>
           <div className="space-y-2">
             <Tick
@@ -455,6 +461,11 @@ export default function TripIntake() {
         >
           {loading ? "Analysing trip…" : "Plan my ride"}
         </button>
+        {nextUp && !loading && (
+          <p role="status" className="text-sm font-medium text-ube-800">
+            Next: fill in {nextUp.label}.
+          </p>
+        )}
       </form>
 
       {error && (
@@ -944,4 +955,17 @@ function HoursStepper({ value, onChange, labelledBy }: { value: number; onChange
 /** Today's date in Manila as YYYY-MM-DD (the earliest appointment date). */
 function todayManila(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+/**
+ * Locks part of step 1 until the part before it is filled in (AC33). Uses a native disabled
+ * fieldset, so every input, select and button inside is locked for touch, mouse and keyboard.
+ */
+function Gate({ open, needs, className = "", children }: { open: boolean; needs: string; className?: string; children: React.ReactNode }) {
+  return (
+    <fieldset disabled={!open} className={`min-w-0 ${className} ${open ? "" : "opacity-50"}`} aria-disabled={!open || undefined}>
+      {children}
+      {!open && <p className="mt-1 text-sm font-medium text-zinc-700">🔒 Fill in {needs} first.</p>}
+    </fieldset>
+  );
 }
