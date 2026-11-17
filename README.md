@@ -1,11 +1,13 @@
 # Care Ride at your service-PH ♿🚐
 
-[![CI](https://github.com/feladelpobre/care-ride-at-your-service-ph/actions/workflows/ci.yml/badge.svg)](https://github.com/feladelpobre/care-ride-at-your-service-ph/actions/workflows/ci.yml)
+[![CI](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/actions/workflows/ci.yml/badge.svg)](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/actions/workflows/ci.yml)
 
 **Wheelchair-safe rides to the hospital, planned in one message.**
 A caregiver describes the trip in plain English or Taglish. Care Ride's AI turns it into a structured ride plan: the right vehicle, crew size, pickup time, a distance-based price estimate, an optional hospital companion, and a driver brief.
 
-🔗 **Live app:** https://care-ride-at-your-service-ph.vercel.app · 🎬 **Demo video:** _add link_ · 📄 **Reflection:** [`docs/reflection.md`](docs/reflection.md)
+🔗 **Live app:** https://care-ride-at-your-service-ph.vercel.app · 🎬 **Demo video (2 min):** DEMO_LINK · 📄 **Reflection:** [`docs/reflection.md`](docs/reflection.md)
+
+> **Opening the app:** a quick Cloudflare "I am human" check runs each time the app is opened (it usually passes on its own in a second). Works in incognito.
 
 > Built for Week 4 Graded Mini Project 4.2 (AI-Powered Web Application) by Feladel "Peng" Pobre.
 
@@ -21,10 +23,13 @@ In a 2024 PGH study of 413 wheelchair users, **82.3% named accessibility as thei
 |---|---|
 | 🤖 | **AI trip intake:** free text (English/Filipino/Taglish) → structured trip details via the Vercel AI SDK `generateObject()` + zod schema |
 | 🦽 | **Mobility assessment:** deterministic rules pick an assist sedan or a ramp/lift van, 1 or 2 crew, and a stair-assist checklist |
-| ⏰ | **Pickup time:** worked back from the appointment (early arrival, travel, boarding, stairs) |
-| 💸 | **Distance-band price estimate:** pickup city → named **or nearest** hospital; bands 0–5 / 5–10 / 10–20 / 20–40 / 40+ km; itemised quote |
-| 🧑‍⚕️ | **Hospital companion add-on:** ₱250/h (min 2 h), stays with the patient inside the hospital until the appointment is done |
-| ☑️ | **Tick boxes up front:** Wheelchair (₱150) · Hospital companion/caregiver · Senior Citizen/PWD 20% fare discount (RA 9994 / RA 10754) |
+| 📝 | **Everything in step 1, then one tap:** pickup, destination, how the patient moves, caregiver hours, appointment date/time and pick-up time; "Plan my ride" returns the full plan and total cost |
+| 📍 | **GPS pickup (optional):** "Use my current location" measures the distance from the phone's position anywhere in the Philippines (rounded to ~100 m, never stored); trips over 60 km are flagged for the dispatcher |
+| 💸 | **System-calculated distance and price:** the rider never types km; known hospitals or the destination's area (dash-insensitive); bands 0–5 / 5–10 / 10–20 / 20–40 / 40+ km; itemised quote; the server recalculates on booking |
+| ⏰ | **Pick-up time:** the app suggests the latest safe time (early arrival, travel, boarding, stairs); the rider can choose their own and is warned if it's too late |
+| 🧑‍⚕️ | **Hospital caregiver hours:** − / + buttons (none, then 2–12 h at ₱250/h); stays with the patient inside the hospital until the appointment is done |
+| ☑️ | **Add-ons:** Wheelchair (₱150) · Senior Citizen/PWD 20% fare discount (RA 9994 / RA 10754) · max 1 family companion riding along |
+| 🤖🛡️ | **"I am human" check:** Cloudflare Turnstile, confirmed on the server, before the app opens; the booking APIs refuse requests without the pass |
 | ⚖️ | **Compliance built in:** Privacy Notice (Data Privacy Act), Terms with complaints/redress (Internet Transactions Act), non-emergency PTV positioning (DOH AO 2018-0001). See the [compliance plan](docs/03-regulatory-compliance.md) |
 | ⭐ | **Feedback and complaints:** customers rate the service, driver and caregiver, report what went wrong (with time and names) and get an FB- ticket; safety reports are marked urgent; dispatchers see the average rating |
 | 📱 | **Anti-fraud:** a PH mobile number is required for every request (confirmation call), with a limit of 3 requests per number per day |
@@ -36,8 +41,9 @@ Next.js 14 (App Router) · TypeScript · Tailwind CSS · Vercel AI SDK + OpenAI 
 
 ## Architecture (short)
 ```
+Browser → Turnstile "I am human" → /api/human (server check, 1-h pass)
 Browser → /api/plan → validate → emergency gate → AI extract (generateObject) → normalise
-        → geo (km to named/nearest hospital) → rules (vehicle, crew, pickup, quote) → plan
+        → step-1 fields override AI → geo (GPS or area → hospital km) → rules (vehicle, crew, pickup, quote) → plan
 Browser → /api/bookings → validate → RECOMPUTE plan on server → Supabase (RLS) → /dispatch
 ```
 **Design principle: the AI understands language; deterministic, unit-tested rules make every safety and pricing decision.** Details: [`docs/architecture.md`](docs/architecture.md) · Spec: [`spec.md`](spec.md)
@@ -56,10 +62,20 @@ Browser → /api/bookings → validate → RECOMPUTE plan on server → Supabase
 | Demo script | [`docs/demo-script.md`](docs/demo-script.md) |
 | Reflection | [`docs/reflection.md`](docs/reflection.md) |
 
+## Submission checklist (Week 4 Graded Mini Project 4.2)
+| Grading criterion | Where to find it |
+|---|---|
+| **Problem & Validation** | [Idea Validation Report](docs/01-idea-validation.md): all 7 steps, PGH evidence, target user, "why now" (Step 5) |
+| **PRD Quality** | [PRD](docs/02-PRD.md): 6 components (problem, users, core features with acceptance criteria, out of scope, success metrics, open questions) |
+| **Spec & Architecture** | [`spec.md`](spec.md) (context, inputs/outputs, behaviour rules, constraints, AC1–AC31) · [architecture notes](docs/architecture.md) · [`CLAUDE.md`](CLAUDE.md) · [`.cursorrules`](.cursorrules) |
+| **Working Application** | https://care-ride-at-your-service-ph.vercel.app (QR above) · demo video: DEMO_LINK |
+| **CI/CD & Engineering Quality** | [GitHub Actions](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/actions) (gitleaks → lint → typecheck → 132 tests → build) · no hardcoded secrets · [commit history](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/commits/main) · this README |
+| Reflection (1 page) · v2 issue | [`docs/reflection.md`](docs/reflection.md) · [issue #1](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/issues/1) |
+
 ## Run locally
 ```bash
-git clone https://github.com/feladelpobre/care-ride-at-your-service-ph.git
-cd care-ride-at-your-service-ph
+git clone https://github.com/feladelpobre/Care-Ride-at-your-service-PH.git
+cd Care-Ride-at-your-service-PH
 npm install
 cp .env.example .env.local     # then add your OPENAI_API_KEY
 npm run dev                    # http://localhost:3000
@@ -74,20 +90,24 @@ Without the Supabase variables, bookings are kept in memory (demo mode).
 | `OPENAI_MODEL` | optional (default `gpt-4o-mini`) | Server only |
 | `SUPABASE_URL` | optional | Server only (`src/lib/storage.ts`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | optional | Server only; RLS blocks all public access |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | optional | Booking confirmation and 2-hour reminder emails |
+| `CRON_SECRET` | optional | Protects `/api/reminders` (called by Supabase `pg_cron`) |
+| `DISPATCH_USER`, `DISPATCH_PASSWORD` | for `/dispatch` | Dispatcher login; the board stays closed without them |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | optional | "I am human" check; the site key is public by design, the secret is server-only |
 
-Secrets are never committed: `.env*` is git-ignored, there is no `NEXT_PUBLIC_` secret, and CI runs **gitleaks** over the full history.
+Secrets are never committed: `.env*` is git-ignored, the only `NEXT_PUBLIC_` value is the public Turnstile site key, and CI runs **gitleaks** over the full history.
 
 ### Database (optional)
 Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor, then set the two Supabase env vars.
 
 ## Tests & CI
 ```bash
-npm test          # 76 Vitest tests: rules, pricing, geo, validation, emergency gate, API routes (AI mocked)
+npm test          # 132 Vitest tests: rules, pricing, geo/GPS, validation, emergency gate, human check, API routes (AI mocked)
 npm run lint && npm run typecheck && npm run build
 ```
 GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and PR: **gitleaks secret scan → lint → typecheck → tests → build**. Vercel deploys previews for PRs and production from `main`.
 
-Each acceptance criterion in `spec.md` (AC1–AC19) maps to a test file.
+Each acceptance criterion in `spec.md` (AC1–AC31) maps to a test file.
 
 ## Monitoring
 - **Vercel Web Analytics:** visitors, page views, pages, countries, devices
@@ -103,10 +123,10 @@ Each acceptance criterion in `spec.md` (AC1–AC19) maps to a test file.
 | 20.1–40 km | +₱900 | +₱1,600 |
 | Over 40 km | +₱900 + ₱30/km | +₱1,600 + ₱50/km |
 
-Add-ons: second crew +₱300 · stair assist ₱100/floor · wheelchair provided ₱150 · hospital companion/caregiver ₱250/h (min 2 h). **Senior Citizen / PWD: 20% off the ride fare** (not the add-ons). Distances are approximate (city centroid → hospital × 1.35 road factor) and editable.
+Add-ons: second crew +₱300 · stair assist ₱100/floor · wheelchair provided ₱150 · hospital companion/caregiver ₱250/h (min 2 h). **Senior Citizen / PWD: 20% off the ride fare** (not the add-ons). Distances are calculated by the system, not typed: phone GPS or the area's centre → hospital, straight line × 1.35 road factor.
 
 ## Limitations & roadmap (v2)
-See the GitHub issues **"v2: Real road distance & traffic-aware ETA via maps API"** and **"v2: Verify the mobile number with an SMS one-time code (OTP)"**. Also planned: round-trip pricing, operator accounts and acceptance flow, SMS/Viber notifications.
+See GitHub issue [#1 **"v2: Real road distance & traffic-aware ETA via maps API"**](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/issues/1). Also planned: SMS one-time code (OTP) to verify the mobile number, a public `/share` page so link previews and search work despite the human check, round-trip pricing, operator accounts and an acceptance flow, SMS/Viber notifications.
 
 ## Privacy
-Demo data only. The app asks for a pickup *area* (not a home address) and never asks for diagnoses. The dispatcher board at `/dispatch` needs an admin login (`DISPATCH_USER` / `DISPATCH_PASSWORD`) and masks contact names, numbers and emails. Designed with the PH Data Privacy Act (RA 10173) in mind.
+Demo data only. The app asks for a pickup *area* (not a home address) and never asks for diagnoses; the optional GPS position is rounded and used only for the distance, never stored. The dispatcher board at `/dispatch` needs an admin login (`DISPATCH_USER` / `DISPATCH_PASSWORD`) and masks contact names, numbers and emails. Designed with the PH Data Privacy Act (RA 10173) in mind.

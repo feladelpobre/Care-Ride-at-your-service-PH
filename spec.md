@@ -136,7 +136,7 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | ID | Criterion | Verified by |
 |---|---|---|
 | AC1 | Description shorter than 20 or longer than 1,500 chars → HTTP 400 with a message | `tests/validation.test.ts` |
-| AC2 | Text containing "chest pain" / "hindi makahinga" / "unconscious" → `emergency: true`; the AI is not called | `tests/emergency.test.ts`, `tests/plan-route.test.ts` |
+| AC2 | Text containing "chest pain" / "hindi makahinga" / "unconscious" → `emergency: true`; the AI is not called. In step 1 the "Call 911" message appears as soon as such words are typed, before any other field is required | `tests/emergency.test.ts`, `tests/plan-route.test.ts` |
 | AC3 | `wheelchair_must_stay_seated` → `wav_ramp_van`; `stretcher_bedbound` → `not_supported` + `blocked` | `tests/rules.test.ts` |
 | AC4 | Wheelchair + 3 floors without elevator → `crewSize = 2` and checklist contains "stair assist" | `tests/rules.test.ts` |
 | AC5 | 09:00 checkup, 45 min travel, sedan, crew 2 → pickup `07:35`; 09:00 dialysis, WAV, crew 1, 45 min → `07:25` | `tests/rules.test.ts` |

@@ -9,6 +9,7 @@ import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
 import { HOSPITALS, gpsPlaceName, isInServiceArea } from "@/lib/geo";
 import { formatManilaDateTime } from "@/lib/format";
+import { detectEmergency, EMERGENCY_MESSAGE } from "@/lib/emergency";
 import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
 import {
   BASE_FARE,
@@ -232,6 +233,16 @@ export default function TripIntake() {
           </span>
           <span>{description.length}/1500</span>
         </div>
+        {/* Emergency words show the 911 message right away, before any other field is needed (AC2) */}
+        {detectEmergency(description).emergency && (
+          <div role="alert" className="rounded-2xl border-2 border-red-600 bg-red-50 p-4">
+            <p className="font-bold text-red-800">This sounds like an emergency.</p>
+            <p className="mt-1 text-sm text-red-900">{EMERGENCY_MESSAGE}</p>
+            <a href="tel:911" className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-red-700 px-6 font-bold text-white">
+              Call 911
+            </a>
+          </div>
+        )}
         <div>
           <label htmlFor="pickup" className="label">
             Pickup location <span className="font-normal text-zinc-600">(required)</span>
