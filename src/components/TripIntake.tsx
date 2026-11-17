@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Accessibility, BadgePercent, HeartHandshake, LocateFixed, Minus, Plus } from "lucide-react";
 import { track } from "@vercel/analytics";
@@ -8,6 +8,7 @@ import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
 import { HOSPITALS, gpsPlaceName, isInServiceArea } from "@/lib/geo";
+import { lookupPlace } from "@/lib/placeName";
 import { formatManilaDateTime } from "@/lib/format";
 import { detectEmergency, EMERGENCY_MESSAGE } from "@/lib/emergency";
 import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
@@ -106,28 +107,58 @@ export default function TripIntake() {
     return buildPlan(draft, { pickupGps: gps }).assessment.suggestedPickupTime;
   }, [appointmentTime, appointmentDate, mobility, destination, pickupLocation, gps]);
 
+  // Each GPS tap gets a number, so a slow place lookup can't overwrite a newer tap or typing
+  const gpsRequest = useRef(0);
+
+  /** Fills the pickup area from the phone's GPS, even when the field is empty (AC29). */
   function locateMe() {
     if (!("geolocation" in navigator)) {
       setGpsStatus({ busy: false, message: "This phone or browser can't share its location. Please type the barangay and city." });
       return;
     }
+    const request = ++gpsRequest.current;
     setGpsStatus({ busy: true, message: null });
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const g = { lat: Math.round(pos.coords.latitude * 1000) / 1000, lng: Math.round(pos.coords.longitude * 1000) / 1000 };
-        if (!isInServiceArea(g)) {
-          setGps(null);
-          setGpsStatus({ busy: false, message: "Your location looks outside the Philippines. Please type the pickup barangay and city." });
-          return;
-        }
-        setGps(g);
-        const place = gpsPlaceName(g).replace("your GPS location", "").replace(/[()]/g, "").trim();
-        setPickupLocation(place ? `${place[0].toUpperCase()}${place.slice(1)} (GPS)` : "Current location (GPS)");
-        setGpsStatus({ busy: false, message: "Location found. We measure the distance from here; your exact location isn't saved." });
-      },
-      () => setGpsStatus({ busy: false, message: "We couldn't get your location. Allow location access, or type the barangay and city." }),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-    );
+
+    const onFound = async (pos: GeolocationPosition) => {
+      const g = { lat: Math.round(pos.coords.latitude * 1000) / 1000, lng: Math.round(pos.coords.longitude * 1000) / 1000 };
+      if (!isInServiceArea(g)) {
+        setGps(null);
+        setGpsStatus({ busy: false, message: "Your location looks outside the Philippines. Please type the pickup barangay and city." });
+        return;
+      }
+      setGps(g);
+      // Show something right away, then the real town/province name once it's looked up
+      const near = gpsPlaceName(g).replace("your GPS location", "").replace(/[()]/g, "").trim();
+      setPickupLocation(near ? `${near[0].toUpperCase()}${near.slice(1)} (GPS)` : "Current location (GPS)");
+      setGpsStatus({ busy: true, message: "Location found. Finding the town name…" });
+      const name = await lookupPlace(g);
+      if (request !== gpsRequest.current) return; // a newer tap or typing took over
+      if (name) setPickupLocation(`${name} (GPS)`);
+      setGpsStatus({
+        busy: false,
+        message: name
+          ? "Location found. Check the area above; we measure the distance from here and don't save your exact location."
+          : "Location found. We couldn't look up the town name, so please add the barangay and city if you can. The distance still uses your GPS.",
+      });
+    };
+
+    const onError = (err: GeolocationPositionError, triedHighAccuracy: boolean) => {
+      if (request !== gpsRequest.current) return;
+      // Indoors, a precise fix can time out: try once more with a quicker, rougher fix
+      if (triedHighAccuracy && err.code !== err.PERMISSION_DENIED) {
+        navigator.geolocation.getCurrentPosition(onFound, (e) => onError(e, false), { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+        return;
+      }
+      setGpsStatus({
+        busy: false,
+        message:
+          err.code === err.PERMISSION_DENIED
+            ? "Location is turned off for this browser. On iPhone: Settings → Privacy & Security → Location Services → Chrome (or Safari Websites) → While Using the App, then tap the button again. Or type the barangay and city."
+            : "We couldn't get your location right now. Move near a window or turn on Wi-Fi and try again, or type the barangay and city.",
+      });
+    };
+
+    navigator.geolocation.getCurrentPosition(onFound, (e) => onError(e, true), { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
   }
 
   // Required details (AC20): the request button stays off until these are filled
@@ -247,13 +278,26 @@ export default function TripIntake() {
           <label htmlFor="pickup" className="label">
             Pickup location <span className="font-normal text-zinc-600">(required)</span>
           </label>
+          <button
+            type="button"
+            className="btn-ghost mb-2 inline-flex min-h-11 items-center gap-2 text-sm"
+            onClick={locateMe}
+            disabled={gpsStatus.busy}
+          >
+            <LocateFixed aria-hidden size={18} />
+            {gpsStatus.busy ? "Finding your location…" : gps ? "Update my location" : "Use my current location (GPS)"}
+          </button>
+          {!gps && !gpsStatus.busy && !pickupLocation && (
+            <p className="mb-2 text-sm text-zinc-600">Tap the button to fill this in automatically, or type the barangay and city below.</p>
+          )}
           <input
             id="pickup"
             className="input"
             value={pickupLocation}
             onChange={(e) => {
               setPickupLocation(e.target.value);
-              if (gps) {
+              gpsRequest.current++;
+              if (gps || gpsStatus.busy) {
                 setGps(null);
                 setGpsStatus({ busy: false, message: null });
               }
@@ -264,10 +308,6 @@ export default function TripIntake() {
             required
             aria-describedby="pickup-help"
           />
-          <button type="button" className="btn-ghost mt-2 inline-flex min-h-11 items-center gap-2 text-sm" onClick={locateMe} disabled={gpsStatus.busy}>
-            <LocateFixed aria-hidden size={18} />
-            {gpsStatus.busy ? "Finding your location…" : gps ? "Update my location" : "Use my current location (GPS)"}
-          </button>
           {gpsStatus.message && (
             <p role="status" className={`mt-1 text-sm ${gps ? "text-ube-800" : "text-amber-800"}`}>
               {gpsStatus.message}
