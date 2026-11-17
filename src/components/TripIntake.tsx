@@ -253,13 +253,14 @@ export default function TripIntake() {
           <span className="step-num" aria-hidden>1</span>
           Tell us about the trip
         </label>
+        {nextUp?.key === "description" && <NextLabel />}
         <textarea
           id="desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={5}
           maxLength={1500}
-          className="input resize-y"
+          className={`input resize-y ${nextUp?.key === "description" ? "border-red-500 ring-2 ring-red-500" : ""}`}
           placeholder={`e.g., ${PLACEHOLDER_EXAMPLE}`}
           aria-describedby="desc-help"
         />
@@ -280,7 +281,7 @@ export default function TripIntake() {
             </a>
           </div>
         )}
-        <Gate open={open("pickup")} needs="the trip description (at least 20 characters)">
+        <Gate open={open("pickup")} current={nextUp?.key === "pickup"} needs="the trip description (at least 20 characters)">
           <label htmlFor="pickup" className="label">
             Pickup location <span className="font-normal text-zinc-600">(required)</span>
           </label>
@@ -324,7 +325,7 @@ export default function TripIntake() {
             for the exact address.
           </p>
         </Gate>
-        <Gate open={open("destination")} needs="the pickup location">
+        <Gate open={open("destination")} current={nextUp?.key === "destination"} needs="the pickup location">
           <label htmlFor="destination" className="label">
             Destination: hospital or clinic <span className="font-normal text-zinc-600">(required)</span>
           </label>
@@ -350,7 +351,7 @@ export default function TripIntake() {
             Mandaluyong). We calculate the distance for you.
           </p>
         </Gate>
-        <Gate open={open("mobility")} needs="the destination">
+        <Gate open={open("mobility")} current={nextUp?.key === "mobility"} needs="the destination">
           <label htmlFor="mobility1" className="label">
             How the patient moves <span className="font-normal text-zinc-600">(required)</span>
           </label>
@@ -382,13 +383,13 @@ export default function TripIntake() {
           </div>
         </Gate>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Gate open={open("appointmentDate")} needs="how the patient moves">
+          <Gate open={open("appointmentDate")} current={nextUp?.key === "appointmentDate"} needs="how the patient moves">
             <label htmlFor="apptDate" className="label">
               Appointment date <span className="font-normal text-zinc-600">(required)</span>
             </label>
             <input id="apptDate" type="date" className="input" value={appointmentDate} min={todayManila()} onChange={(e) => setAppointmentDate(e.target.value)} required />
           </Gate>
-          <Gate open={open("appointmentTime")} needs="the appointment date">
+          <Gate open={open("appointmentTime")} current={nextUp?.key === "appointmentTime"} needs="the appointment date">
             <label htmlFor="apptTime" className="label">
               Appointment time <span className="font-normal text-zinc-600">(required)</span>
             </label>
@@ -957,15 +958,52 @@ function todayManila(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
 
+/** The "fill this in now" label shown on the current part of step 1 (AC33). */
+function NextLabel() {
+  return (
+    <p className="mb-1 inline-flex items-center gap-1 rounded-full bg-red-600 px-3 py-1 text-sm font-bold text-white">
+      👉 Next: fill this in (required)
+    </p>
+  );
+}
+
 /**
  * Locks part of step 1 until the part before it is filled in (AC33). Uses a native disabled
  * fieldset, so every input, select and button inside is locked for touch, mouse and keyboard.
+ * Locked parts are clearly greyed with a dashed outline and a label at the top (not faded);
+ * the part to fill in now gets a coloured outline and a "Next" label.
  */
-function Gate({ open, needs, className = "", children }: { open: boolean; needs: string; className?: string; children: React.ReactNode }) {
+function Gate({
+  open,
+  current = false,
+  needs,
+  className = "",
+  children,
+}: {
+  open: boolean;
+  current?: boolean;
+  needs: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const frame = !open
+    ? "rounded-2xl border-2 border-dashed border-zinc-300 bg-zinc-100 p-3"
+    : current
+      ? "rounded-2xl bg-red-50 p-3 ring-2 ring-red-500"
+      : "";
+  // While locked, the grey frame replaces the box's own border and background
+  const own = open ? className : className.split(/\s+/).filter((c) => !/^(border|bg-)/.test(c)).join(" ");
   return (
-    <fieldset disabled={!open} className={`min-w-0 ${className} ${open ? "" : "opacity-50"}`} aria-disabled={!open || undefined}>
-      {children}
-      {!open && <p className="mt-1 text-sm font-medium text-zinc-700">🔒 Fill in {needs} first.</p>}
-    </fieldset>
+    <div className={`min-w-0 ${own} ${frame}`}>
+      {!open && (
+        <p className="mb-2 inline-flex items-center gap-1 rounded-full bg-zinc-700 px-3 py-1 text-sm font-bold text-white">
+          🔒 Locked: fill in {needs} first
+        </p>
+      )}
+      {open && current && <NextLabel />}
+      <fieldset disabled={!open} className={`min-w-0 ${open ? "" : "pointer-events-none select-none opacity-40 grayscale"}`}>
+        {children}
+      </fieldset>
+    </div>
   );
 }
