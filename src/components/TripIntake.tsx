@@ -236,7 +236,7 @@ export default function TripIntake() {
         {/* Emergency words show the 911 message right away, before any other field is needed (AC2) */}
         {detectEmergency(description).emergency && (
           <div role="alert" className="rounded-2xl border-2 border-red-600 bg-red-50 p-4">
-            <p className="font-bold text-red-800">This sounds like an emergency.</p>
+            <p className="font-bold text-red-800">Possible emergency</p>
             <p className="mt-1 text-sm text-red-900">{EMERGENCY_MESSAGE}</p>
             <a href="tel:911" className="mt-3 inline-flex min-h-11 items-center rounded-lg bg-red-700 px-6 font-bold text-white">
               Call 911
