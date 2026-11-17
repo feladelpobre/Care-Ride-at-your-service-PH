@@ -67,6 +67,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Link href="/feedback" className="text-ube-800 underline underline-offset-2">
                 Give feedback or report a problem
               </Link>
+              <Link href="/case" className="text-ube-800 underline underline-offset-2">
+                Case File: how Care Ride was built
+              </Link>
             </nav>
             <p className="max-w-3xl">
               Student prototype (Week 4 Mini Project 4.2). Non-emergency patient transport only; not an ambulance service. Prices are
