@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   }
   const ip = clientKey(req);
   if (!parsed?.success || !(await verifyTurnstile(parsed.data.token, ip === "anon" ? null : ip))) {
-    return NextResponse.json({ error: "The check didn't pass. Please tick the box again. If it keeps failing, try another browser or turn off your VPN or ad blocker." }, { status: 403 });
+    return NextResponse.json({ error: "The check didn't pass. Please tick the box again." }, { status: 403 });
   }
   const res = NextResponse.json({ ok: true });
   res.cookies.set(HUMAN_COOKIE, await createHumanToken(), {

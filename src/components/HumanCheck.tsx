@@ -14,20 +14,41 @@ declare global {
   }
 }
 
+const FAILED = "The check didn't pass. Please tick the box again.";
+const STUCK_TIP = "Still stuck? Open this page in Chrome or Safari (not inside another app), or turn off your VPN or ad blocker, then reload.";
+
+/** Cloudflare retries on its own; only show the red message after this many failures in a row. */
+const SHOW_ERROR_AFTER = 2;
+
 /** Cloudflare Turnstile checkbox: "Verify you are human" (AC28). */
 export default function HumanCheck({ siteKey, next }: { siteKey: string; next: string }) {
   const box = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
+  const failures = useRef(0);
   const [ready, setReady] = useState(false);
-  const [status, setStatus] = useState<"idle" | "checking" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "checking" | "retrying" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready || !box.current || !window.turnstile || widgetId.current) return;
+
+    // A failure: stay calm while Cloudflare retries, explain only if it keeps failing
+    const fail = (message: string) => {
+      failures.current += 1;
+      if (failures.current < SHOW_ERROR_AFTER) {
+        setStatus("retrying");
+        setError(null);
+      } else {
+        setStatus("error");
+        setError(message);
+      }
+    };
+
     widgetId.current = window.turnstile.render(box.current, {
       sitekey: siteKey,
       theme: "light",
       language: "auto",
+      retry: "auto",
       callback: async (token: string) => {
         setStatus("checking");
         setError(null);
@@ -39,7 +60,7 @@ export default function HumanCheck({ siteKey, next }: { siteKey: string; next: s
           });
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
-            throw new Error(data.error ?? "The check didn't pass. Please tick the box again. If it keeps failing, try another browser or turn off your VPN or ad blocker.");
+            throw new Error(data.error ?? FAILED);
           }
           // Remember the pass for this tab only, so a new opening asks again (AC28)
           try {
@@ -47,16 +68,22 @@ export default function HumanCheck({ siteKey, next }: { siteKey: string; next: s
           } catch {
             /* storage blocked: the server pass still protects bookings */
           }
+          failures.current = 0;
           window.location.replace(next);
         } catch (err) {
-          setStatus("error");
-          setError(err instanceof Error ? err.message : "The check didn't pass. Please tick the box again. If it keeps failing, try another browser or turn off your VPN or ad blocker.");
+          fail(err instanceof Error ? err.message : FAILED);
           window.turnstile?.reset(widgetId.current ?? undefined);
         }
       },
+      // Returning true tells Turnstile we handled it; it keeps retrying on its own
       "error-callback": () => {
+        fail(FAILED);
+        return true;
+      },
+      "unsupported-callback": () => {
+        failures.current = SHOW_ERROR_AFTER;
         setStatus("error");
-        setError("The check didn't pass. Please tick the box again. If it keeps failing, try another browser or turn off your VPN or ad blocker.");
+        setError("This browser can't run the check.");
       },
       "expired-callback": () => window.turnstile?.reset(widgetId.current ?? undefined),
     });
@@ -72,10 +99,16 @@ export default function HumanCheck({ siteKey, next }: { siteKey: string; next: s
           Confirming… opening the app.
         </p>
       )}
-      {error && (
-        <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-          {error}
+      {status === "retrying" && (
+        <p role="status" className="text-sm text-zinc-600">
+          Checking again… this can take a few seconds.
         </p>
+      )}
+      {status === "error" && error && (
+        <div role="alert" className="space-y-1 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          <p className="font-medium">{error}</p>
+          <p>{STUCK_TIP}</p>
+        </div>
       )}
     </div>
   );
