@@ -52,6 +52,9 @@ describe("FAQ page and AI helper (AC36)", () => {
     expect(searchFaq("Is there a senior discount?")?.id).toBe("discount");
     expect(searchFaq("Will the dispatcher call me to confirm?")?.id).toBe("confirm-call");
     expect(searchFaq("how do I cancel my ride")?.id).toBe("change-cancel");
+    expect(searchFaq("Do you still pick up if there is a typhoon?")?.id).toBe("weather");
+    expect(searchFaq("bumabaha sa amin, tuloy pa ba?")?.id).toBe("weather");
+    expect(searchFaq("what is the weather today in Cebu")?.id).toBe("weather");
     expect(searchFaq("who won the basketball game")).toBeNull();
   });
 

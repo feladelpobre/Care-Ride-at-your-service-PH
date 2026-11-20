@@ -33,8 +33,8 @@ export const FAQS: Faq[] = [
     id: "what-is",
     topic: "Booking",
     q: "What is Care Ride?",
-    a: "Care Ride plans safe, wheelchair-friendly rides to hospital, clinic and dialysis appointments in Metro Manila. Describe the trip in your own words, and the app suggests the right vehicle, crew, pick-up time and an estimated fare. It is not an ambulance service.",
-    keywords: ["what", "care ride", "service", "about", "ano"],
+    a: "Care Ride plans safe, wheelchair-friendly rides to hospital, clinic and dialysis appointments, in Metro Manila and anywhere in the Philippines (longer trips are confirmed by the dispatcher). Describe the trip in your own words, and the app suggests the right vehicle, crew, pick-up time and an estimated fare. It is not an ambulance service.",
+    keywords: ["care ride", "service", "about", "ano ang"],
   },
   {
     id: "how-book",
@@ -64,6 +64,14 @@ export const FAQS: Faq[] = [
     a: "No. For chest pain, trouble breathing, fainting, heavy bleeding, stroke signs or a seizure, call 911 now. Care Ride is for planned, non-emergency trips only.",
     keywords: ["emergency", "ambulance", "911", "urgent", "chest pain", "stroke", "emerhensiya"],
     strong: ["emergency", "ambulance", "emerhensiya"],
+  },
+  {
+    id: "weather",
+    topic: "Safety",
+    q: "Do you still pick up during heavy rain, floods or a typhoon?",
+    a: "Yes, when it is safe. In heavy rain or flooding, the dispatcher may call to move your pick-up earlier or to reschedule. When a typhoon signal (PAGASA Signal No. 2 or higher) is raised in your area, or roads on the route are flooded, the trip may be postponed for everyone's safety, and we call you first. For dialysis or other treatments that can't wait, tell the dispatcher so we can plan the safest route or time.",
+    keywords: ["rain", "flood", "typhoon", "storm", "weather", "signal", "pagasa", "bagyo", "ulan", "baha", "bumabaha"],
+    strong: ["typhoon", "flood", "bagyo", "baha", "ulan", "rain"],
   },
   {
     id: "vehicles",

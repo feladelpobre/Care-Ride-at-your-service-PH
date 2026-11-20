@@ -36,7 +36,7 @@ In a 2024 PGH study of 413 wheelchair users, **82.3% named accessibility as thei
 | 🚨 | **Safety guardrails:** an emergency red-flag check runs *before* the AI and shows "Call 911"; stretcher cases are blocked; the server recomputes all prices |
 | 📋 | **Dispatcher board (admin login):** every request shows its reference (e.g. CR-4D718C0B) and the date and time it was requested, with the driver brief; names masked for privacy |
 | 📞 | **Call workflow:** a "To call now" bar on the board; one-tap Call buttons (number stays masked); mark rides "Called & confirmed", "Trip done" or "Cancelled", and feedback "Called back" or "Resolved"; urgent callbacks are due in 2 h, others in 24 h, overdue ones turn red |
-| ❓ | **FAQ + "Ask a question" helper:** 18 answers on booking, calls, prices, safety and privacy; the AI only picks which FAQ answers the question (English or Filipino) and the app shows that answer word for word, so it can't invent prices; emergencies get "Call 911" first |
+| ❓ | **FAQ + "Ask a question" helper:** 19 answers on booking, calls, prices, safety (incl. rain, floods and typhoons) and privacy; the AI only picks which FAQ answers the question (English or Filipino) and the app shows that answer word for word, so it can't invent prices; emergencies get "Call 911" first |
 
 ## Tech stack
 Next.js 14 (App Router) · TypeScript · Tailwind CSS · Vercel AI SDK + OpenAI `gpt-4o-mini` · zod · Supabase (Postgres + RLS) · Vitest · GitHub Actions · Vercel + Vercel Analytics
