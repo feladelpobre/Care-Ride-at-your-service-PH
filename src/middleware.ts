@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifySessionToken } from "@/lib/adminAuth";
 import { HUMAN_COOKIE, isHumanCheckEnabled, verifyHumanToken } from "@/lib/humanCheck";
 
 /** Customer pages and APIs that need the "I am human" check first (AC28). */
-const HUMAN_API = ["/api/plan", "/api/bookings", "/api/feedback"];
+const HUMAN_API = ["/api/plan", "/api/bookings", "/api/feedback", "/api/faq"];
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
@@ -36,5 +36,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/feedback", "/dispatch", "/dispatch/:path*", "/api/plan", "/api/bookings", "/api/feedback"],
+  matcher: ["/", "/feedback", "/faq", "/dispatch", "/dispatch/:path*", "/api/plan", "/api/bookings", "/api/feedback", "/api/faq"],
 };

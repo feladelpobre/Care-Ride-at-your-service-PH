@@ -34,20 +34,24 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <Link href="/" aria-label="Care Ride at your service-PH, home">
               <Wordmark />
             </Link>
-            <div className="flex shrink-0 gap-1 text-[15px] font-bold">
+            <div className="flex shrink-0 gap-0 text-[15px] font-bold sm:gap-1">
               <Link href="/" className="hidden rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50 sm:inline-block">
                 Book a ride
               </Link>
-              <Link href="/feedback" className="rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50">
+              <Link href="/faq" className="rounded-full px-2 py-2 text-ube-800 hover:bg-ube-50 sm:px-3">
+                FAQ
+              </Link>
+              <Link href="/feedback" className="rounded-full px-2 py-2 text-ube-800 hover:bg-ube-50 sm:px-3">
                 Feedback
               </Link>
               <Link
                 href="/dispatch"
-                className="inline-flex items-center gap-1 rounded-full px-3 py-2 text-ube-800 hover:bg-ube-50"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-2 text-ube-800 hover:bg-ube-50 sm:px-3"
                 title="Staff only: log in to see the dispatcher board"
               >
                 <Lock aria-hidden size={14} />
-                Dispatcher
+                <span className="sm:hidden">Staff</span>
+                <span className="hidden sm:inline">Dispatcher</span>
               </Link>
             </div>
           </nav>
@@ -63,6 +67,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               </Link>
               <Link href="/terms" className="text-ube-800 underline underline-offset-2">
                 Terms of Service
+              </Link>
+              <Link href="/faq" className="text-ube-800 underline underline-offset-2">
+                Questions and answers (FAQ)
               </Link>
               <Link href="/feedback" className="text-ube-800 underline underline-offset-2">
                 Give feedback or report a problem

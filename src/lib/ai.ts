@@ -2,7 +2,8 @@ import "server-only";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { aiExtractionSchema, type TripExtraction } from "./schemas";
-import { buildSystemPrompt } from "./prompt";
+import { buildFaqPrompt, buildSystemPrompt } from "./prompt";
+import { faqMatchSchema } from "./faq";
 import { normalizeExtraction } from "./normalize";
 
 export class AiNotConfiguredError extends Error {}
@@ -42,4 +43,25 @@ export async function extractTrip(description: string): Promise<TripExtraction> 
     abortSignal: AbortSignal.timeout(20_000),
   });
   return normalizeExtraction(object);
+}
+
+/**
+ * FAQ helper (AC36): the AI only chooses WHICH FAQ entry answers the question ("none" if no entry fits).
+ * The app then shows that entry's stored answer word for word, so the helper can't invent prices or promises.
+ */
+export async function matchFaq(question: string): Promise<string | null> {
+  if (!process.env.OPENAI_API_KEY) throw new AiNotConfiguredError("OPENAI_API_KEY is not set");
+  const { apiKey, baseURL, model } = resolveProvider();
+  const openai = createOpenAI({ apiKey, baseURL, compatibility: "strict" });
+  const { object } = await generateObject({
+    model: openai(model, { structuredOutputs: true }),
+    schema: faqMatchSchema,
+    schemaName: "FaqMatch",
+    system: buildFaqPrompt(),
+    prompt: `Customer question:\n"""\n${question}\n"""`,
+    temperature: 0,
+    maxRetries: 1,
+    abortSignal: AbortSignal.timeout(15_000),
+  });
+  return object.faqId === "none" ? null : object.faqId;
 }
