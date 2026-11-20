@@ -40,7 +40,7 @@ export default function PrivacyPage() {
           <li>
             If you tap <strong>Use my current location</strong>: your phone&apos;s GPS position, rounded to about 100 metres. We use it
             only to calculate the distance and price and to fill in your barangay and town (looked up through BigDataCloud and OpenStreetMap, which receive only
-            the rounded position), and we do not save or log it. If that isn&apos;t the pick-up place, you can type a street or nearby landmark, barangay and city; when you tap &quot;Find this spot on the map&quot;, that text is sent to OpenStreetMap to find it, and only the rounded spot is used for the distance.
+            the rounded position), and we do not save or log it. If that isn&apos;t the pick-up place, you can type a street or nearby landmark, barangay and city; when you tap &quot;Find this spot on the map&quot;, that text is sent to OpenStreetMap&apos;s search services (Nominatim, with Photon by Komoot as a backup) to find it, and only the rounded spot is used for the distance.
           </li>
           <li>
             The patient&apos;s <strong>mobility needs</strong> (for example: uses a wheelchair, number of stairs, oxygen tank).

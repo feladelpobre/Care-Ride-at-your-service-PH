@@ -59,9 +59,9 @@ export function formatOsmPlace(data: unknown): string | null {
   return unique.length ? unique.join(", ").slice(0, 100) : null;
 }
 
-async function getJson(url: string, fetchImpl: typeof fetch): Promise<unknown> {
+async function getJson(url: string, fetchImpl: typeof fetch, timeoutMs = 6000): Promise<unknown> {
   try {
-    const res = await fetchImpl(url, { signal: AbortSignal.timeout(6000) });
+    const res = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) });
     return res.ok ? await res.json() : null;
   } catch {
     return null;
@@ -89,30 +89,69 @@ export function hasHouseNumber(text: string): boolean {
   return /^\s*(#|no\.?\s*)?\d+[a-z]?\b/i.test(text) || /\b(blk|block|lot|unit|apt|rm|room)\.?\s*#?\d+/i.test(text) || /#\s*\d+/.test(text);
 }
 
-/**
- * Finds a typed street or landmark on OpenStreetMap (Philippines only) so the distance is measured
- * from that spot (AC38). Called once per "Find this spot" tap, never while typing (Nominatim policy).
- * Returns the position rounded to ~110 m and a short name, or null (never throws).
- */
-export async function findSpot(
-  query: string,
-  fetchImpl: typeof fetch = fetch,
-): Promise<{ lat: number; lng: number; label: string } | null> {
-  const q = query.trim();
-  if (q.length < 5) return null;
-  const data = await getJson(
-    `${OSM_ENDPOINT.replace("/reverse", "/search")}?format=jsonv2&countrycodes=ph&limit=1&accept-language=en&q=${encodeURIComponent(q)}`,
-    fetchImpl,
-  );
+type Spot = { lat: number; lng: number; label: string };
+const PHOTON_ENDPOINT = "https://photon.komoot.io/api/";
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+/** Short, readable name: up to 4 parts, no postcode, no "Philippines", no repeats. */
+function shortLabel(parts: (string | null)[]): string {
+  const clean = parts.map((x) => (x ?? "").trim()).filter((x) => x && !/^\d{4}$/.test(x) && x !== "Philippines");
+  return clean.filter((x, i) => clean.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i).slice(0, 4).join(", ");
+}
+
+/** Nominatim (OpenStreetMap) answer -> spot. */
+export function spotFromNominatim(data: unknown): Spot | null {
   const hit = Array.isArray(data) ? (data[0] as { lat?: unknown; lon?: unknown; display_name?: unknown } | undefined) : undefined;
   const lat = Number(hit?.lat);
   const lng = Number(hit?.lon);
   if (!hit || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  const label = (str(hit.display_name) ?? q)
-    .split(",")
-    .map((p) => p.trim())
-    .filter((p) => p && !/^\d{4}$/.test(p) && p !== "Philippines")
-    .slice(0, 4)
-    .join(", ");
-  return { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000, label };
+  return { lat: round3(lat), lng: round3(lng), label: shortLabel((str(hit.display_name) ?? "").split(",")) };
+}
+
+/** Photon (OpenStreetMap search by Komoot) answer -> spot, Philippines only. */
+export function spotFromPhoton(data: unknown): Spot | null {
+  const f = (data as { features?: { geometry?: { coordinates?: unknown }; properties?: Record<string, unknown> }[] } | null)?.features?.[0];
+  const c = f?.geometry?.coordinates;
+  const pr = f?.properties ?? {};
+  if (!Array.isArray(c) || (str(pr.countrycode) && pr.countrycode !== "PH")) return null;
+  const [lng, lat] = c.map(Number);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat: round3(lat), lng: round3(lng), label: shortLabel([str(pr.name), str(pr.street), str(pr.district), str(pr.city), str(pr.state)]) };
+}
+
+/**
+ * Shorter versions of what the rider typed, tried in order when the full text isn't found:
+ * "Nuvali, Canlubang, Calamba" -> "Nuvali, Calamba" -> "Nuvali, Canlubang". Drops "(GPS)" and "near".
+ */
+export function spotQueries(query: string): string[] {
+  const q = query.replace(/\(GPS\)/gi, "").replace(/^\s*(near|malapit sa|tapat ng)\s+/i, "").replace(/\s+/g, " ").trim();
+  const parts = q.split(",").map((x) => x.trim()).filter(Boolean);
+  const list = [q];
+  if (parts.length >= 3) list.push(`${parts[0]}, ${parts[parts.length - 1]}`, `${parts[0]}, ${parts[1]}`);
+  if (parts.length === 2) list.push(parts[0]);
+  return list.filter((x, i) => x.length >= 4 && list.indexOf(x) === i);
+}
+
+/**
+ * Finds a typed street or landmark on the map (Philippines only) so the distance is measured
+ * from that spot (AC38). Runs only when the rider leaves the box or taps "Find this spot", never
+ * while typing (OpenStreetMap search policy). Tries OpenStreetMap's Nominatim first and Photon
+ * as a backup, with shorter versions of the text if needed. Returns the position rounded to
+ * ~110 m and a short name, or null (never throws).
+ */
+export async function findSpot(query: string, fetchImpl: typeof fetch = fetch, pauseMs = 1000): Promise<Spot | null> {
+  if (query.trim().length < 5) return null;
+  const nominatim = (q: string) =>
+    `${OSM_ENDPOINT.replace("/reverse", "/search")}?format=jsonv2&countrycodes=ph&limit=1&accept-language=en&q=${encodeURIComponent(q)}`;
+  // Photon has no country filter: limit it to the Philippines' bounding box
+  const photon = (q: string) => `${PHOTON_ENDPOINT}?limit=1&bbox=116,4.5,127,21.5&q=${encodeURIComponent(q)}`;
+  const queries = spotQueries(query).slice(0, 3);
+  for (let i = 0; i < queries.length; i++) {
+    const q = queries[i];
+    // OpenStreetMap asks for at most 1 search per second
+    if (i > 0 && pauseMs) await new Promise((r) => setTimeout(r, pauseMs));
+    const spot = spotFromNominatim(await getJson(nominatim(q), fetchImpl, 10_000)) ?? spotFromPhoton(await getJson(photon(q), fetchImpl, 10_000));
+    if (spot) return spot;
+  }
+  return null;
 }

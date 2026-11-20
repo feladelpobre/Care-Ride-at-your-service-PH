@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { barangayFromOsm, findSpot, formatOsmPlace, formatPlace, hasHouseNumber, lookupPlace } from "@/lib/placeName";
+import { barangayFromOsm, findSpot, formatOsmPlace, formatPlace, hasHouseNumber, lookupPlace, spotQueries } from "@/lib/placeName";
 
 // Shapes taken from the real reverse-geocoding answers for these places
 const SANTA_ROSA = {
@@ -64,13 +64,44 @@ describe("typed street or landmark is found on the map (AC38)", () => {
     const url = String((f.mock.calls[0] as unknown as [string])[0]);
     expect(url).toMatch(/nominatim\.openstreetmap\.org\/search/);
     expect(url).toMatch(/countrycodes=ph/);
-    expect(url).toMatch(/q=Near%20Jollibee%20Balibago/);
+    expect(url).toMatch(/q=Jollibee%20Balibago%2C%20Santa%20Rosa/);
   });
 
   it("returns null when nothing is found, the text is too short, or the network fails", async () => {
     expect(await findSpot("Narnia castle", vi.fn(async () => new Response("[]")) as unknown as typeof fetch)).toBeNull();
     expect(await findSpot("abc", vi.fn() as unknown as typeof fetch)).toBeNull();
     expect(await findSpot("SM Calamba", vi.fn(async () => { throw new Error("offline"); }) as unknown as typeof fetch)).toBeNull();
+  });
+
+  it("tries shorter versions of the text: 'Nuvali, Canlubang, Calamba' -> 'Nuvali, Calamba' -> 'Nuvali, Canlubang'", () => {
+    expect(spotQueries("Nuvali, Canlubang, Calamba")).toEqual(["Nuvali, Canlubang, Calamba", "Nuvali, Calamba", "Nuvali, Canlubang"]);
+    expect(spotQueries("Near SM Calamba, Calamba")).toEqual(["SM Calamba, Calamba", "SM Calamba"]);
+    expect(spotQueries("Pineda, Pasig, Metro Manila (GPS)")[0]).toBe("Pineda, Pasig, Metro Manila");
+  });
+
+  it("uses the backup map service (Photon) when OpenStreetMap's Nominatim fails or finds nothing (the Nuvali phone test)", async () => {
+    const PHOTON_NUVALI = {
+      features: [{ geometry: { coordinates: [121.0853319, 14.1807394] }, properties: { name: "Avida Settings Nuvali", district: "Canlubang", city: "Calamba", state: "Laguna", countrycode: "PH" } }],
+    };
+    const f = vi.fn(async (url: string) => (String(url).includes("photon") ? new Response(JSON.stringify(PHOTON_NUVALI)) : new Response("busy", { status: 429 })));
+    expect(await findSpot("Nuvali, Canlubang, Calamba", f as unknown as typeof fetch, 0)).toEqual({ lat: 14.181, lng: 121.085, label: "Avida Settings Nuvali, Canlubang, Calamba, Laguna" });
+    expect(String((f.mock.calls[1] as unknown as [string])[0])).toMatch(/photon\.komoot\.io\/api\/\?limit=1&bbox=116,4\.5,127,21\.5/);
+  });
+
+  it("retries with a shorter version when the full text isn't found anywhere", async () => {
+    const f = vi.fn(async (url: string) => {
+      const u = decodeURIComponent(String(url));
+      if (u.includes("nominatim") && u.endsWith("q=Nuvali, Calamba")) return new Response(JSON.stringify([{ lat: "14.1929", lon: "121.0649", display_name: "Nuvali Wildlife and Bird Sanctuary, Calamba, Laguna, Philippines" }]));
+      return new Response(u.includes("photon") ? JSON.stringify({ features: [] }) : "[]");
+    });
+    expect((await findSpot("Nuvali, Canlubang, Calamba", f as unknown as typeof fetch, 0))?.label).toBe("Nuvali Wildlife and Bird Sanctuary, Calamba, Laguna");
+  });
+
+  it("ignores a backup result outside the Philippines", async () => {
+    const f = vi.fn(async (url: string) =>
+      String(url).includes("photon") ? new Response(JSON.stringify({ features: [{ geometry: { coordinates: [139.7, 35.7] }, properties: { name: "Shinjuku", countrycode: "JP" } }] })) : new Response("[]"),
+    );
+    expect(await findSpot("Shinjuku station", f as unknown as typeof fetch, 0)).toBeNull();
   });
 
   it("asks the rider to leave out house, block/lot and unit numbers", () => {
