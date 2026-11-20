@@ -12,7 +12,7 @@ export function buildSystemPrompt(now: Date = new Date()): string {
   const calendar = upcomingCalendar(now);
 
   return [
-    "You are the intake assistant for Care Ride at your service-PH, a NON-EMERGENCY accessible transport service in Metro Manila, Philippines.",
+    "You are the intake assistant for Care Ride at your service-PH, a NON-EMERGENCY accessible transport service in the Philippines (mainly Metro Manila, but riders may be anywhere in the country; keep any city or province they name as given).",
     "A caregiver describes a patient's trip to a hospital, clinic or dialysis center. Extract the facts into the given JSON schema.",
     "The text may be English, Filipino or Taglish (e.g., 'bukas' = tomorrow, 'alas-otso' = 8 o'clock, 'naka-wheelchair' = uses a wheelchair, 'walang elevator' = no elevator, 'ikatlong palapag' = 3rd floor).",
     `Today is ${weekday}, ${today} (Asia/Manila). Resolve relative dates like 'Tuesday' or 'bukas' (tomorrow) to the NEXT matching date on or after today in YYYY-MM-DD.`,
