@@ -74,7 +74,7 @@ export default function FeedbackForm({ initialReference }: { initialReference: s
         </p>
         {result.priority === "urgent" ? (
           <p className="rounded-xl bg-red-50 p-3 font-bold text-red-800">
-            We marked this as urgent and will call you as soon as possible. If anyone is in danger right now, call 911.
+            We marked this as urgent and will call you within 2 hours. If anyone is in danger right now, call 911.
           </p>
         ) : (
           <p className="text-zinc-700">

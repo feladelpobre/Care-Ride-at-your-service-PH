@@ -3,14 +3,19 @@ import { unstable_noStore as noStore } from "next/cache";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Booking } from "./schemas";
 import type { BookingFlags, EventName, EventProps } from "./insights";
+import type { StatusUpdate } from "./callQueue";
 import { referenceToIdRange, type FeedbackRecord, type FeedbackRequest } from "./feedback";
 
 export type NewBooking = Omit<Booking, "id" | "createdAt" | "status">;
 
 let client: SupabaseClient | null = null;
-const memory: Booking[] = [];
-const memoryFeedback: FeedbackRecord[] = [];
-const memoryEvents: { name: EventName; props: EventProps; createdAt: number }[] = [];
+// Demo storage (no Supabase): kept on globalThis so every route and page in `next dev` shares the same lists
+type MemoryStore = { bookings: Booking[]; feedback: FeedbackRecord[]; events: { name: EventName; props: EventProps; createdAt: number }[] };
+const g = globalThis as typeof globalThis & { __careRideMemory?: MemoryStore };
+g.__careRideMemory ??= { bookings: [], feedback: [], events: [] };
+const memory = g.__careRideMemory.bookings;
+const memoryFeedback = g.__careRideMemory.feedback;
+const memoryEvents = g.__careRideMemory.events;
 
 export function storageMode(): "supabase" | "memory" {
   return process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY ? "supabase" : "memory";
@@ -131,21 +136,21 @@ export async function markNotified(id: string, kind: "confirmation" | "reminder"
   if (error) throw new Error(`storage update failed: ${error.code ?? "unknown"}`);
 }
 
-/** Pending bookings with an email whose reminder hasn't been sent, for today and tomorrow (Manila). */
+/** Pending or confirmed bookings with an email whose reminder hasn't been sent, for today and tomorrow (Manila). */
 export async function listReminderCandidates(now = Date.now()): Promise<Booking[]> {
   noStore();
   const manilaDay = (t: number) => new Date(t + 8 * 3_600_000).toISOString().slice(0, 10);
   const days = [manilaDay(now), manilaDay(now + 3 * 3_600_000)];
   if (storageMode() === "memory") {
     return memory.filter(
-      (b) => b.contactEmail && b.status === "pending" && days.includes(b.appointmentDate ?? "") && !(b as { reminderSentAt?: string }).reminderSentAt,
+      (b) => b.contactEmail && ["pending", "confirmed"].includes(b.status) && days.includes(b.appointmentDate ?? "") && !(b as { reminderSentAt?: string }).reminderSentAt,
     );
   }
   const { data, error } = await db()
     .from("bookings")
     .select("*")
     .in("appointment_date", days)
-    .eq("status", "pending")
+    .in("status", ["pending", "confirmed"])
     .is("reminder_sent_at", null)
     .not("contact_email", "is", null)
     .limit(200);
@@ -370,4 +375,21 @@ export async function listFeedback(limit = 50): Promise<FeedbackRecord[]> {
   const { data, error } = await db().from("feedback").select("*").order("created_at", { ascending: false }).limit(limit);
   if (error) throw new Error(`feedback list failed: ${error.code ?? "unknown"}`);
   return (data as FeedbackRow[]).map(fromFeedbackRow);
+}
+
+/** Dispatcher call workflow (AC35): staff mark a booking or feedback ticket after calling. */
+export async function updateStatus(u: StatusUpdate): Promise<boolean> {
+  if (storageMode() === "memory") {
+    const list: { id: string; status: string }[] = u.kind === "booking" ? memory : memoryFeedback;
+    const item = list.find((x) => x.id === u.id);
+    if (item) item.status = u.status;
+    return Boolean(item);
+  }
+  const { data, error } = await db()
+    .from(u.kind === "booking" ? "bookings" : "feedback")
+    .update({ status: u.status })
+    .eq("id", u.id)
+    .select("id");
+  if (error) throw new Error(`status update failed: ${error.code ?? "unknown"}`);
+  return (data ?? []).length > 0;
 }

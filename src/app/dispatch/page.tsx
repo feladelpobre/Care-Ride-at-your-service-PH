@@ -4,6 +4,19 @@ import { averageRating, feedbackTicket, ISSUE_TYPES, type FeedbackRecord } from 
 import { bookingReference, formatManilaDateTime } from "@/lib/format";
 import { computeInsights, CONVERSION_TARGET_PCT, type Insights } from "@/lib/insights";
 import type { Booking } from "@/lib/schemas";
+import {
+  BOOKING_STATUS_LABEL,
+  BOOKING_STATUSES,
+  callSummary,
+  FEEDBACK_STATUS_LABEL,
+  FEEDBACK_STATUSES,
+  feedbackCallDue,
+  isOverdue,
+  telHref,
+  type BookingStatus,
+  type FeedbackStatus,
+} from "@/lib/callQueue";
+import StatusButtons from "@/components/StatusButtons";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,6 +24,29 @@ export const fetchCache = "force-no-store";
 export const metadata = { title: "Dispatcher board · Care Ride at your service-PH" };
 
 const peso = (n: number) => `₱${n.toLocaleString("en-PH")}`;
+
+const BOOKING_OPTIONS = BOOKING_STATUSES.map((v) => ({ value: v, label: v === "pending" ? "Back to: to call" : BOOKING_STATUS_LABEL[v] }));
+const FEEDBACK_OPTIONS = FEEDBACK_STATUSES.map((v) => ({ value: v, label: v === "open" ? "Back to: to call back" : FEEDBACK_STATUS_LABEL[v] }));
+const BOOKING_STYLE: Record<string, string> = {
+  pending: "bg-red-100 text-red-900",
+  confirmed: "bg-green-100 text-green-900",
+  completed: "bg-zinc-200 text-zinc-800",
+  cancelled: "bg-zinc-100 text-zinc-600 line-through",
+};
+
+/** A tap-to-call link for staff. The number on screen stays masked; the phone dials the full number. */
+function CallLink({ phone }: { phone: string | null }) {
+  const href = telHref(phone);
+  if (!href) return <span className="text-sm text-zinc-600">No mobile number</span>;
+  return (
+    <a
+      href={href}
+      className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-ube-700 px-4 text-sm font-bold text-white hover:bg-ube-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ube-700"
+    >
+      📞 Call {maskPhone(phone)}
+    </a>
+  );
+}
 
 export default async function DispatchPage() {
   let bookings: Booking[] = [];
@@ -34,6 +70,12 @@ export default async function DispatchPage() {
     feedback = null;
   }
 
+  const now = Date.now();
+  const calls = callSummary(bookings, feedback ?? [], now);
+  const phoneByBooking = new Map(bookings.map((b) => [b.id, b.contactPhone]));
+  const order: Record<string, number> = { pending: 0, confirmed: 1, completed: 2, cancelled: 3 };
+  const sortedBookings = [...bookings].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+
   return (
     <div className="space-y-6">
       <div>
@@ -52,9 +94,11 @@ export default async function DispatchPage() {
         </p>
       </div>
 
+      {!failed && <CallBar {...calls} />}
+
       {insights && <InsightsPanel i={insights} />}
 
-      {feedback && <FeedbackPanel items={feedback} />}
+      {feedback && <FeedbackPanel items={feedback} phoneByBooking={phoneByBooking} now={now} />}
 
       {failed && (
         <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">
@@ -65,7 +109,7 @@ export default async function DispatchPage() {
       {!failed && bookings.length === 0 && <div className="card text-zinc-600">No ride requests yet.</div>}
 
       <ul className="space-y-4">
-        {bookings.map((b) => (
+        {sortedBookings.map((b) => (
           <li key={b.id} className="card">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -78,8 +122,8 @@ export default async function DispatchPage() {
                 </p>
               </div>
               <div className="lg:shrink-0 lg:text-right">
-                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900">
-                  {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${BOOKING_STYLE[b.status] ?? "bg-zinc-100"}`}>
+                  {BOOKING_STATUS_LABEL[b.status as BookingStatus] ?? b.status}
                 </span>
                 <p className="mt-2 text-sm font-bold text-ube-900">{bookingReference(b.id)}</p>
                 <p className="text-sm text-zinc-600">
@@ -100,6 +144,15 @@ export default async function DispatchPage() {
                 Est. {peso(b.fareMin)}–{peso(b.fareMax)}
               </span>
             </div>
+            {b.status === "pending" && (
+              <div className="mt-3 rounded-xl border-2 border-red-200 bg-red-50 p-3">
+                <p className="text-sm font-bold text-red-900">Call the rider to confirm before any van is sent, then tap the result below.</p>
+                <div className="mt-2">
+                  <CallLink phone={b.contactPhone} />
+                </div>
+              </div>
+            )}
+            <StatusButtons kind="booking" id={b.id} current={b.status} options={BOOKING_OPTIONS} />
             <details className="mt-3 text-sm">
               <summary className="cursor-pointer font-medium text-ube-800">Driver brief</summary>
               <ul className="mt-2 space-y-1 font-mono text-xs text-zinc-700">
@@ -168,7 +221,35 @@ const PRIORITY_STYLE: Record<FeedbackRecord["priority"], string> = {
   normal: "bg-zinc-100 text-zinc-800",
 };
 
-function FeedbackPanel({ items }: { items: FeedbackRecord[] }) {
+function CallBar({ bookingsToCall, callbacksDue, overdue }: { bookingsToCall: number; callbacksDue: number; overdue: number }) {
+  const none = bookingsToCall + callbacksDue === 0;
+  return (
+    <section aria-labelledby="calls-title" className={`card border-2 ${overdue ? "border-red-400" : none ? "border-green-300" : "border-amber-300"}`}>
+      <h2 id="calls-title" className="text-xl font-bold text-ube-950">
+        To call now
+      </h2>
+      {none ? (
+        <p className="mt-2 text-green-800">All caught up: no riders waiting for a call.</p>
+      ) : (
+        <ul className="mt-2 space-y-1 text-[15px] text-zinc-800">
+          <li>
+            <strong>{bookingsToCall}</strong> ride request{bookingsToCall === 1 ? "" : "s"} to confirm by phone
+          </li>
+          <li>
+            <strong>{callbacksDue}</strong> feedback callback{callbacksDue === 1 ? "" : "s"} promised (urgent within 2 hours, others within 24 hours)
+          </li>
+          {overdue > 0 && (
+            <li className="font-bold text-red-800">
+              ⚠ {overdue} callback{overdue === 1 ? " is" : "s are"} overdue: call first
+            </li>
+          )}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function FeedbackPanel({ items, phoneByBooking, now }: { items: FeedbackRecord[]; phoneByBooking: Map<string, string | null>; now: number }) {
   const avg = averageRating(items);
   const open = items.filter((f) => f.status !== "resolved");
   const order = { urgent: 0, high: 1, normal: 2 } as const;
@@ -203,7 +284,8 @@ function FeedbackPanel({ items }: { items: FeedbackRecord[] }) {
                   </p>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${PRIORITY_STYLE[f.priority]}`}>
-                  {f.priority === "urgent" ? "Urgent" : f.priority === "high" ? "High" : "Normal"} · {f.status === "open" ? "Open" : f.status}
+                  {f.priority === "urgent" ? "Urgent" : f.priority === "high" ? "High" : "Normal"} ·{" "}
+                  {f.priority === "normal" && f.status === "open" ? "New" : (FEEDBACK_STATUS_LABEL[f.status as FeedbackStatus] ?? f.status)}
                 </span>
               </div>
               {f.issueTypes.length > 0 && (
@@ -248,10 +330,28 @@ function FeedbackPanel({ items }: { items: FeedbackRecord[] }) {
                 )}
               </dl>
               {f.details && <p className="mt-2 whitespace-pre-line rounded-xl bg-zinc-50 p-3 text-[15px] text-zinc-800">{f.details}</p>}
+              <CallbackBox due={feedbackCallDue(f)} now={now} phone={phoneByBooking.get(f.bookingId) ?? null} reference={bookingReference(f.bookingId)} />
+              <StatusButtons kind="feedback" id={f.id} current={f.status} options={FEEDBACK_OPTIONS} />
             </li>
           ))}
         </ul>
       )}
     </section>
+  );
+}
+
+function CallbackBox({ due, now, phone, reference }: { due: number | null; now: number; phone: string | null; reference: string }) {
+  if (due === null) return null;
+  const late = isOverdue(due, now);
+  return (
+    <div className={`mt-3 rounded-xl border-2 p-3 ${late ? "border-red-400 bg-red-50" : "border-amber-300 bg-amber-50"}`}>
+      <p className={`text-sm font-bold ${late ? "text-red-900" : "text-amber-900"}`}>
+        {late ? "⚠ Overdue: we promised a call by " : "Call back by "}
+        {formatManilaDateTime(new Date(due).toISOString())}
+      </p>
+      <div className="mt-2">
+        {phone ? <CallLink phone={phone} /> : <span className="text-sm text-zinc-700">Find the mobile number on booking {reference}.</span>}
+      </div>
+    </div>
   );
 }

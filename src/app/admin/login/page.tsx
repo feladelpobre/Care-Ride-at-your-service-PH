@@ -15,6 +15,15 @@ export default function AdminLoginPage({ searchParams }: { searchParams: { out?:
         </p>
       )}
       <AdminLoginForm />
+      <section aria-labelledby="forgot-title" className="rounded-xl border-2 border-ube-100 bg-ube-50 p-4 text-sm text-ube-950">
+        <h2 id="forgot-title" className="font-bold">
+          Forgot the password?
+        </h2>
+        <p className="mt-1">
+          Ask the Care Ride admin to reset it. There is one shared staff login in this version, so there is no reset email. After 5 wrong
+          tries, wait 15 minutes before trying again.
+        </p>
+      </section>
     </div>
   );
 }
