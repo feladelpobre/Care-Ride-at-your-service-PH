@@ -80,3 +80,39 @@ export async function lookupPlace(g: { lat: number; lng: number }, fetchImpl: ty
   ]);
   return formatPlace(bdc, barangayFromOsm(osm)) ?? formatOsmPlace(osm);
 }
+
+/**
+ * Typed pick-up spot (AC38): street or nearby landmark + barangay + city, never a house number.
+ * Spots a likely house, block/lot or unit number so the screen can ask the rider to leave it out.
+ */
+export function hasHouseNumber(text: string): boolean {
+  return /^\s*(#|no\.?\s*)?\d+[a-z]?\b/i.test(text) || /\b(blk|block|lot|unit|apt|rm|room)\.?\s*#?\d+/i.test(text) || /#\s*\d+/.test(text);
+}
+
+/**
+ * Finds a typed street or landmark on OpenStreetMap (Philippines only) so the distance is measured
+ * from that spot (AC38). Called once per "Find this spot" tap, never while typing (Nominatim policy).
+ * Returns the position rounded to ~110 m and a short name, or null (never throws).
+ */
+export async function findSpot(
+  query: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ lat: number; lng: number; label: string } | null> {
+  const q = query.trim();
+  if (q.length < 5) return null;
+  const data = await getJson(
+    `${OSM_ENDPOINT.replace("/reverse", "/search")}?format=jsonv2&countrycodes=ph&limit=1&accept-language=en&q=${encodeURIComponent(q)}`,
+    fetchImpl,
+  );
+  const hit = Array.isArray(data) ? (data[0] as { lat?: unknown; lon?: unknown; display_name?: unknown } | undefined) : undefined;
+  const lat = Number(hit?.lat);
+  const lng = Number(hit?.lon);
+  if (!hit || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const label = (str(hit.display_name) ?? q)
+    .split(",")
+    .map((p) => p.trim())
+    .filter((p) => p && !/^\d{4}$/.test(p) && p !== "Philippines")
+    .slice(0, 4)
+    .join(", ");
+  return { lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000, label };
+}

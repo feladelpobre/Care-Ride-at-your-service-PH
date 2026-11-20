@@ -8,7 +8,7 @@ import type { TripExtraction, TripPlan } from "@/lib/schemas";
 import { MOBILITY } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
 import { HOSPITALS, gpsPlaceName, isInServiceArea } from "@/lib/geo";
-import { lookupPlace } from "@/lib/placeName";
+import { findSpot, hasHouseNumber, lookupPlace } from "@/lib/placeName";
 import { firstUnfinished, isUnlocked, type Step1Fields } from "@/lib/stepGate";
 import { formatTimeText } from "@/lib/dateText";
 import { DateBox, TimeBox, todayManila } from "@/components/DateTimeBoxes";
@@ -55,6 +55,29 @@ export default function TripIntake() {
   const [gpsStatus, setGpsStatus] = useState<{ busy: boolean; message: string | null }>({ busy: false, message: null });
   // GPS is the main way to fill the pickup (AC37); typing opens once it has been tried
   const [gpsTried, setGpsTried] = useState(false);
+  // A typed street/landmark found on the map (AC38): measured like GPS, never stored
+  const [spotFor, setSpotFor] = useState<string | null>(null);
+
+  /** Looks up the typed street or landmark on OpenStreetMap and measures the distance from it (AC38). */
+  async function findTypedSpot() {
+    const text = pickupLocation.trim();
+    if (text.length < 5 || spotFor === text) return;
+    const request = ++gpsRequest.current;
+    setSpotFor(text);
+    setGpsStatus({ busy: true, message: "Finding this spot on the map…" });
+    const spot = await findSpot(text);
+    if (request !== gpsRequest.current) return;
+    if (spot && isInServiceArea(spot)) {
+      setGps({ lat: spot.lat, lng: spot.lng });
+      setGpsStatus({ busy: false, message: `Found on the map: ${spot.label}. We measure the distance from there.` });
+    } else {
+      setGps(null);
+      setGpsStatus({
+        busy: false,
+        message: "We couldn't find that spot on the map, so we use the barangay and city for the distance. Try a nearby landmark (a church, school, mall or store).",
+      });
+    }
+  }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
@@ -305,16 +328,11 @@ export default function TripIntake() {
             <LocateFixed aria-hidden size={18} />
             {gpsStatus.busy ? "Finding your location…" : gps ? "Find my location again" : "Use my current location (GPS)"}
           </button>
-          {gpsStatus.message && (
-            <p role="status" className={`mb-2 text-sm ${gps ? "text-ube-800" : "text-amber-800"}`}>
-              {gpsStatus.message}
-            </p>
-          )}
           <label htmlFor="pickup" className={`mt-1 block text-sm font-bold ${gpsTried ? "text-ube-950" : "text-zinc-500"}`}>
-            {gps
-              ? "Is this the pick-up place? If not, type the correct barangay and city:"
+            {gps && spotFor === null
+              ? "Is this the pick-up place? If not, type the street or a nearby landmark, barangay and city (no house number):"
               : gpsTried
-                ? "Type the pick-up barangay and city:"
+                ? "Type the street or a nearby landmark, barangay and city (no house number):"
                 : "Not the right place? You can correct it here after tapping GPS."}
           </label>
           <input
@@ -325,21 +343,41 @@ export default function TripIntake() {
             onChange={(e) => {
               setPickupLocation(e.target.value);
               gpsRequest.current++;
+              setSpotFor(null);
               if (gps || gpsStatus.busy) {
                 setGps(null);
                 setGpsStatus({ busy: false, message: null });
               }
             }}
+            onBlur={() => {
+              if (gpsTried && !gps) void findTypedSpot();
+            }}
             maxLength={120}
             autoComplete="address-level3"
-            placeholder={gpsTried ? "Barangay and city, e.g., Balibago, Santa Rosa, Laguna" : "Tap the GPS button first"}
+            placeholder={gpsTried ? "e.g., Near Jollibee Balibago, Santa Rosa, Laguna" : "Tap the GPS button first"}
             required
             aria-describedby="pickup-help"
           />
+          {gpsStatus.message && (
+            <p role="status" className={`mt-1 text-sm ${gps ? "font-medium text-ube-800" : "text-amber-800"}`}>
+              {gpsStatus.message}
+            </p>
+          )}
+          {gpsTried && hasHouseNumber(pickupLocation) && (
+            <p role="alert" className="mt-1 text-sm font-medium text-amber-800">
+              Please leave out the house, block/lot or unit number. A street or landmark is enough; the driver calls you for the gate.
+            </p>
+          )}
+          {gpsTried && !gps && pickupLocation.trim().length >= 5 && spotFor !== pickupLocation.trim() && (
+            <button type="button" className="btn-ghost mt-2 inline-flex min-h-11 items-center gap-2 text-sm" onClick={() => void findTypedSpot()}>
+              <LocateFixed aria-hidden size={16} />
+              Find this spot on the map
+            </button>
+          )}
           <p id="pickup-help" className="mt-1 text-sm text-zinc-600">
             {gpsTried && !gps && pickupLocation
-              ? "We measure the distance from the barangay and city you typed. The driver calls you for the exact address."
-              : "Not at the pick-up place now? Tap GPS anyway, then type the correct barangay and city. The driver calls you for the exact address."}
+              ? "Tap \"Find this spot on the map\" so we measure the distance from that street or landmark. The driver calls you for the exact gate or house."
+              : "Not at the pick-up place now? Tap GPS anyway, then type the street or a nearby landmark, barangay and city. The driver calls you for the exact gate or house."}
             {gps && " Place names: BigDataCloud, © OpenStreetMap contributors."}
           </p>
         </Gate>

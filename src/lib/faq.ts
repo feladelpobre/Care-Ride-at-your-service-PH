@@ -40,7 +40,7 @@ export const FAQS: Faq[] = [
     id: "how-book",
     topic: "Booking",
     q: "How do I book a ride?",
-    a: "On the home page, fill in step 1 in order: describe the trip; tap \"Use my current location (GPS)\" so the barangay and city fill in by themselves (correct them if that isn't the pick-up place); then the destination, how the patient moves, the appointment date and time, and your pick-up time. Tap Plan my ride to see the plan and fare, then send the request with your name, mobile number and email. You get a reference like CR-4ED3B086.",
+    a: "On the home page, fill in step 1 in order: describe the trip; tap \"Use my current location (GPS)\" so the barangay and city fill in by themselves (if that isn't the pick-up place, type the street or a nearby landmark, barangay and city instead, with no house number); then the destination, how the patient moves, the appointment date and time, and your pick-up time. Tap Plan my ride to see the plan and fare, then send the request with your name, mobile number and email. You get a reference like CR-4ED3B086.",
     keywords: ["book", "booking", "request", "reserve", "how", "paano", "mag-book", "schedule"],
   },
   {

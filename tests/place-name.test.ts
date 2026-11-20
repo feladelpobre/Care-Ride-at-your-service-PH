@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { barangayFromOsm, formatOsmPlace, formatPlace, lookupPlace } from "@/lib/placeName";
+import { barangayFromOsm, findSpot, formatOsmPlace, formatPlace, hasHouseNumber, lookupPlace } from "@/lib/placeName";
 
 // Shapes taken from the real reverse-geocoding answers for these places
 const SANTA_ROSA = {
@@ -51,5 +51,30 @@ describe("GPS fills the pickup area automatically (AC29)", () => {
     expect(await lookupPlace({ lat: 14.312, lng: 121.111 }, f)).toBe("Santa Rosa, Laguna");
     expect(String((f.mock.calls[0] as unknown as [string])[0])).toMatch(/latitude=14\.312&longitude=121\.111/);
     expect(String((f.mock.calls[1] as unknown as [string])[0])).toMatch(/openstreetmap.*lat=14\.312&lon=121\.111/);
+  });
+});
+
+describe("typed street or landmark is found on the map (AC38)", () => {
+  it("finds the spot in the Philippines, rounds it to ~110 m and gives a short name", async () => {
+    const f = vi.fn(async () =>
+      new Response(JSON.stringify([{ lat: "14.31449", lon: "121.10852", display_name: "Jollibee, Balibago, Santa Rosa, Laguna, Calabarzon, 4026, Philippines" }])),
+    );
+    const spot = await findSpot("Near Jollibee Balibago, Santa Rosa, Laguna", f as unknown as typeof fetch);
+    expect(spot).toEqual({ lat: 14.314, lng: 121.109, label: "Jollibee, Balibago, Santa Rosa, Laguna" });
+    const url = String((f.mock.calls[0] as unknown as [string])[0]);
+    expect(url).toMatch(/nominatim\.openstreetmap\.org\/search/);
+    expect(url).toMatch(/countrycodes=ph/);
+    expect(url).toMatch(/q=Near%20Jollibee%20Balibago/);
+  });
+
+  it("returns null when nothing is found, the text is too short, or the network fails", async () => {
+    expect(await findSpot("Narnia castle", vi.fn(async () => new Response("[]")) as unknown as typeof fetch)).toBeNull();
+    expect(await findSpot("abc", vi.fn() as unknown as typeof fetch)).toBeNull();
+    expect(await findSpot("SM Calamba", vi.fn(async () => { throw new Error("offline"); }) as unknown as typeof fetch)).toBeNull();
+  });
+
+  it("asks the rider to leave out house, block/lot and unit numbers", () => {
+    for (const t of ["123 Rizal St, Pasig", "#45 Mabini, Makati", "Blk 3 Lot 12, Dasmariñas", "Unit 5B, Ortigas", "No. 7 Luna St"]) expect(hasHouseNumber(t)).toBe(true);
+    for (const t of ["Near Jollibee Balibago, Santa Rosa", "Rizal St corner Mabini, Pasig", "Brgy. 176, Caloocan", "Pineda, Pasig"]) expect(hasHouseNumber(t)).toBe(false);
   });
 });
