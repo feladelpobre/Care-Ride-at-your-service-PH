@@ -62,3 +62,27 @@ describe("destination read by its area when the hospital isn't on our list (AC26
     expect(r.distanceKm).toBe(10);
   });
 });
+
+describe("typed pickup towns outside Metro Manila (AC37)", () => {
+  it("finds nearby-province towns and measures the distance instead of the 10 km default", () => {
+    const r = estimateRoute("Brgy. Balibago, Santa Rosa, Laguna", "Asian Hospital Alabang");
+    expect(r.pickupCity).toBe("Santa Rosa, Laguna");
+    expect(r.source).toBe("estimated");
+    expect(r.distanceKm).toBeGreaterThan(5);
+    expect(r.distanceKm).toBeLessThan(25);
+    expect(estimateRoute("Bacoor, Cavite", "PGH").pickupCity).toBe("Bacoor, Cavite");
+    expect(estimateRoute("SJDM Bulacan", "NKTI").pickupCity).toBe("San Jose del Monte, Bulacan");
+    expect(estimateRoute("Dasmarinas", "PGH").pickupCity).toBe("Dasmariñas, Cavite");
+  });
+
+  it("measures trips inside a major city from the destination's area, not from Manila", () => {
+    const r = estimateRoute("Mandaue City, Cebu", "Chong Hua Hospital, Cebu City");
+    expect(r.pickupCity).toBe("Mandaue, Cebu");
+    expect(r.distanceKm).toBeLessThan(15);
+  });
+
+  it("doesn't suggest Manila hospitals as 'nearest' for a far city", () => {
+    expect(estimateRoute("Davao City", null).nearestHospitals).toEqual([]);
+    expect(estimateRoute("Davao City", null).source).toBe("default");
+  });
+});

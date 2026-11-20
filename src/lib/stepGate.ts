@@ -6,6 +6,8 @@ export type Step1Fields = {
   description: string;
   pickupLocation: string;
   hasGps: boolean;
+  /** The rider has tapped the GPS button (found, refused or failed). Typing the place opens only after that (AC37). */
+  gpsTried?: boolean;
   destination: string;
   mobility: string;
   appointmentDate: string;
@@ -14,7 +16,7 @@ export type Step1Fields = {
 
 export const STEP1_ORDER = [
   { key: "description", label: "the trip description (at least 20 characters)" },
-  { key: "pickup", label: "the pickup location" },
+  { key: "pickup", label: "the pickup location (tap the GPS button first)" },
   { key: "destination", label: "the destination" },
   { key: "mobility", label: "how the patient moves" },
   { key: "appointmentDate", label: "the appointment date" },
@@ -27,7 +29,8 @@ export type Step1Key = (typeof STEP1_ORDER)[number]["key"];
 export function step1Done(f: Step1Fields): Record<Step1Key, boolean> {
   return {
     description: f.description.trim().length >= 20,
-    pickup: f.hasGps || f.pickupLocation.trim().length >= 3,
+    // GPS first (AC37): a typed place counts only after the GPS button was tried
+    pickup: f.hasGps || (Boolean(f.gpsTried) && f.pickupLocation.trim().length >= 3),
     destination: f.destination.trim().length >= 3,
     mobility: f.mobility !== "unknown" && f.mobility !== "",
     appointmentDate: f.appointmentDate !== "",

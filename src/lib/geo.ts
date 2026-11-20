@@ -1,6 +1,7 @@
 /**
  * Offline distance estimator (spec §3.5). No maps API in v1:
- * - pickup = centroid of the Metro Manila city/municipality named by the caregiver
+ * - pickup = phone GPS, or the centre of the city/municipality named by the caregiver
+ *   (Metro Manila, nearby provinces and major cities across the Philippines)
  * - destination = a known hospital from a curated list (approximate coordinates)
  * - road distance ≈ straight-line distance × 1.35, rounded to 0.5 km
  * The distance is always calculated here, never typed by the caregiver (AC26).
@@ -29,6 +30,51 @@ export const CITIES: Place[] = [
   { name: "Pateros", aliases: ["pateros"], lat: 14.5446, lng: 121.0687 },
   { name: "Cainta", aliases: ["cainta"], lat: 14.5786, lng: 121.1222 },
   { name: "Antipolo", aliases: ["antipolo"], lat: 14.586, lng: 121.1761 },
+  // Rizal
+  { name: "Taytay, Rizal", aliases: ["taytay"], lat: 14.5692, lng: 121.1325 },
+  { name: "Angono, Rizal", aliases: ["angono"], lat: 14.5266, lng: 121.1536 },
+  { name: "Binangonan, Rizal", aliases: ["binangonan"], lat: 14.4645, lng: 121.1925 },
+  { name: "San Mateo, Rizal", aliases: ["san mateo"], lat: 14.6969, lng: 121.1219 },
+  { name: "Rodriguez (Montalban), Rizal", aliases: ["montalban", "rodriguez rizal", "rodriguez, rizal"], lat: 14.7343, lng: 121.1389 },
+  // Cavite
+  { name: "Bacoor, Cavite", aliases: ["bacoor"], lat: 14.459, lng: 120.929 },
+  { name: "Imus, Cavite", aliases: ["imus"], lat: 14.4297, lng: 120.9367 },
+  { name: "Dasmariñas, Cavite", aliases: ["dasmariñas", "dasmarinas", "dasma"], lat: 14.3294, lng: 120.9367 },
+  { name: "General Trias, Cavite", aliases: ["general trias", "gen. trias", "gentri"], lat: 14.3869, lng: 120.8817 },
+  { name: "Cavite City", aliases: ["cavite city"], lat: 14.4791, lng: 120.897 },
+  { name: "Tagaytay, Cavite", aliases: ["tagaytay"], lat: 14.1153, lng: 120.9621 },
+  // Laguna
+  { name: "San Pedro, Laguna", aliases: ["san pedro"], lat: 14.3595, lng: 121.0473 },
+  { name: "Biñan, Laguna", aliases: ["biñan", "binan"], lat: 14.3426, lng: 121.0807 },
+  { name: "Santa Rosa, Laguna", aliases: ["santa rosa", "sta. rosa", "sta rosa"], lat: 14.3122, lng: 121.1114 },
+  { name: "Cabuyao, Laguna", aliases: ["cabuyao"], lat: 14.2724, lng: 121.1251 },
+  { name: "Calamba, Laguna", aliases: ["calamba"], lat: 14.2117, lng: 121.1653 },
+  { name: "Los Baños, Laguna", aliases: ["los baños", "los banos", "elbi"], lat: 14.1699, lng: 121.2441 },
+  { name: "San Pablo, Laguna", aliases: ["san pablo"], lat: 14.0683, lng: 121.3256 },
+  // Bulacan
+  { name: "Meycauayan, Bulacan", aliases: ["meycauayan"], lat: 14.7346, lng: 120.9572 },
+  { name: "Marilao, Bulacan", aliases: ["marilao"], lat: 14.7581, lng: 120.9481 },
+  { name: "Bocaue, Bulacan", aliases: ["bocaue"], lat: 14.798, lng: 120.926 },
+  { name: "San Jose del Monte, Bulacan", aliases: ["san jose del monte", "sjdm"], lat: 14.8139, lng: 121.0453 },
+  { name: "Malolos, Bulacan", aliases: ["malolos"], lat: 14.8433, lng: 120.8114 },
+  // Pampanga and Batangas
+  { name: "San Fernando, Pampanga", aliases: ["san fernando, pampanga", "san fernando pampanga", "city of san fernando"], lat: 15.0286, lng: 120.6898 },
+  { name: "Angeles, Pampanga", aliases: ["angeles city", "angeles, pampanga", "angeles pampanga"], lat: 15.145, lng: 120.5887 },
+  { name: "Mabalacat, Pampanga", aliases: ["mabalacat", "clark"], lat: 15.2216, lng: 120.5736 },
+  { name: "Batangas City", aliases: ["batangas city"], lat: 13.7565, lng: 121.0583 },
+  { name: "Lipa, Batangas", aliases: ["lipa city", "lipa, batangas", "lipa batangas"], lat: 13.9411, lng: 121.1631 },
+  { name: "Tanauan, Batangas", aliases: ["tanauan"], lat: 14.0863, lng: 121.1497 },
+  // Major cities outside Luzon's capital region
+  { name: "Baguio", aliases: ["baguio"], lat: 16.4023, lng: 120.596 },
+  { name: "Cebu City", aliases: ["cebu"], lat: 10.3157, lng: 123.8854 },
+  { name: "Mandaue, Cebu", aliases: ["mandaue"], lat: 10.3236, lng: 123.9223 },
+  { name: "Lapu-Lapu, Cebu", aliases: ["lapu lapu", "lapulapu", "mactan"], lat: 10.3103, lng: 123.9494 },
+  { name: "Iloilo City", aliases: ["iloilo"], lat: 10.7202, lng: 122.5621 },
+  { name: "Bacolod", aliases: ["bacolod"], lat: 10.6765, lng: 122.9509 },
+  { name: "Cagayan de Oro", aliases: ["cagayan de oro", "cdo"], lat: 8.4542, lng: 124.6319 },
+  { name: "Davao City", aliases: ["davao"], lat: 7.1907, lng: 125.4553 },
+  { name: "General Santos", aliases: ["general santos", "gensan"], lat: 6.1164, lng: 125.1716 },
+  { name: "Zamboanga City", aliases: ["zamboanga"], lat: 6.9214, lng: 122.079 },
 ];
 
 export const HOSPITALS: Place[] = [
@@ -143,6 +189,7 @@ export function estimateRoute(
   const hospital = findHospital(destination);
   const nearest = city
     ? HOSPITALS.map((h) => ({ name: h.name, km: roadKm(city, h) }))
+        .filter((h) => h.km <= USUAL_MAX_KM)
         .sort((a, b) => a.km - b.km)
         .slice(0, 3)
     : [];
@@ -150,7 +197,7 @@ export function estimateRoute(
   if (city && hospital) {
     return { distanceKm: roadKm(city, hospital), source: "estimated", pickupCity: city.name, hospital: hospital.name, nearestHospitals: nearest, note: `Approx. road distance ${city.name} → ${hospital.name}` };
   }
-  if (city && !destination) {
+  if (city && !destination && nearest.length) {
     return { distanceKm: nearest[0].km, source: "estimated", pickupCity: city.name, hospital: null, nearestHospitals: nearest, note: `No hospital named; priced to the nearest: ${nearest[0].name}` };
   }
   // Hospital/clinic not on our list: read the area written in the destination instead

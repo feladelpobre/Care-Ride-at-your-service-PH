@@ -39,8 +39,8 @@ export default function PrivacyPage() {
           <li>Pickup <strong>area</strong> (barangay/city), hospital, appointment date and time, and your preferred pick-up time. We do not ask for a full home address.</li>
           <li>
             If you tap <strong>Use my current location</strong>: your phone&apos;s GPS position, rounded to about 100 metres. We use it
-            only to calculate the distance and price and to fill in your town name (looked up through BigDataCloud, which receives only
-            the rounded position), and we do not save or log it. You can type the barangay and city instead.
+            only to calculate the distance and price and to fill in your barangay and town (looked up through BigDataCloud and OpenStreetMap, which receive only
+            the rounded position), and we do not save or log it. If that isn&apos;t the pick-up place, you can type the correct barangay and city.
           </li>
           <li>
             The patient&apos;s <strong>mobility needs</strong> (for example: uses a wheelchair, number of stairs, oxygen tank).

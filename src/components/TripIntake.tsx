@@ -53,6 +53,8 @@ export default function TripIntake() {
   // Phone GPS for the pickup (AC29): rounded, used only for the distance, never stored
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsStatus, setGpsStatus] = useState<{ busy: boolean; message: string | null }>({ busy: false, message: null });
+  // GPS is the main way to fill the pickup (AC37); typing opens once it has been tried
+  const [gpsTried, setGpsTried] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emergency, setEmergency] = useState<Emergency | null>(null);
@@ -116,7 +118,8 @@ export default function TripIntake() {
   /** Fills the pickup area from the phone's GPS, even when the field is empty (AC29). */
   function locateMe() {
     if (!("geolocation" in navigator)) {
-      setGpsStatus({ busy: false, message: "This phone or browser can't share its location. Please type the barangay and city." });
+      setGpsTried(true);
+      setGpsStatus({ busy: false, message: "This phone or browser can't share its location. Please type the barangay and city below." });
       return;
     }
     const request = ++gpsRequest.current;
@@ -124,6 +127,7 @@ export default function TripIntake() {
 
     const onFound = async (pos: GeolocationPosition) => {
       const g = { lat: Math.round(pos.coords.latitude * 1000) / 1000, lng: Math.round(pos.coords.longitude * 1000) / 1000 };
+      setGpsTried(true);
       if (!isInServiceArea(g)) {
         setGps(null);
         setGpsStatus({ busy: false, message: "Your location looks outside the Philippines. Please type the pickup barangay and city." });
@@ -140,13 +144,14 @@ export default function TripIntake() {
       setGpsStatus({
         busy: false,
         message: name
-          ? "Location found. Check the area above; we measure the distance from here and don't save your exact location."
-          : "Location found. We couldn't look up the town name, so please add the barangay and city if you can. The distance still uses your GPS.",
+          ? "Location found. Is this where the patient will be picked up? If not, type the correct barangay and city in the box. We don't save your exact location."
+          : "Location found, but we couldn't look up the barangay and city. Please type them in the box. The distance still uses your GPS.",
       });
     };
 
     const onError = (err: GeolocationPositionError, triedHighAccuracy: boolean) => {
       if (request !== gpsRequest.current) return;
+      setGpsTried(true);
       // Indoors, a precise fix can time out: try once more with a quicker, rougher fix
       if (triedHighAccuracy && err.code !== err.PERMISSION_DENIED) {
         navigator.geolocation.getCurrentPosition(onFound, (e) => onError(e, false), { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
@@ -243,7 +248,7 @@ export default function TripIntake() {
   const update = (patch: Partial<TripExtraction>) => setExtraction((x) => (x ? { ...x, ...patch } : x));
 
   // Step 1 is filled in order (AC33): later parts stay locked until earlier ones are done
-  const step1: Step1Fields = { description, pickupLocation, hasGps: Boolean(gps), destination, mobility, appointmentDate, appointmentTime };
+  const step1: Step1Fields = { description, pickupLocation, hasGps: Boolean(gps), gpsTried, destination, mobility, appointmentDate, appointmentTime };
   const nextUp = firstUnfinished(step1);
   const open = (key: Parameters<typeof isUnlocked>[1]) => isUnlocked(step1, key);
 
@@ -284,24 +289,38 @@ export default function TripIntake() {
           </div>
         )}
         <Gate open={open("pickup")} current={nextUp?.key === "pickup"} needs="the trip description (at least 20 characters)">
-          <label htmlFor="pickup" className="label">
+          <p className="label" id="pickup-title">
             Pickup location <span className="font-normal text-zinc-600">(required)</span>
-          </label>
+          </p>
+          <p className="mb-2 text-sm text-zinc-700">
+            <strong>First, tap the GPS button.</strong> It fills in the barangay, city and province for you.
+          </p>
           <button
             type="button"
-            className="btn-ghost mb-2 inline-flex min-h-11 items-center gap-2 text-sm"
+            className={`${gps ? "btn-ghost" : "btn-primary"} mb-2 inline-flex min-h-11 w-full items-center justify-center gap-2 sm:w-auto`}
             onClick={locateMe}
             disabled={gpsStatus.busy}
+            aria-describedby="pickup-title"
           >
             <LocateFixed aria-hidden size={18} />
-            {gpsStatus.busy ? "Finding your location…" : gps ? "Update my location" : "Use my current location (GPS)"}
+            {gpsStatus.busy ? "Finding your location…" : gps ? "Find my location again" : "Use my current location (GPS)"}
           </button>
-          {!gps && !gpsStatus.busy && !pickupLocation && (
-            <p className="mb-2 text-sm text-zinc-600">Tap the button to fill this in automatically, or type the barangay and city below.</p>
+          {gpsStatus.message && (
+            <p role="status" className={`mb-2 text-sm ${gps ? "text-ube-800" : "text-amber-800"}`}>
+              {gpsStatus.message}
+            </p>
           )}
+          <label htmlFor="pickup" className={`mt-1 block text-sm font-bold ${gpsTried ? "text-ube-950" : "text-zinc-500"}`}>
+            {gps
+              ? "Is this the pick-up place? If not, type the correct barangay and city:"
+              : gpsTried
+                ? "Type the pick-up barangay and city:"
+                : "Not the right place? You can correct it here after tapping GPS."}
+          </label>
           <input
             id="pickup"
-            className="input"
+            disabled={!gpsTried}
+            className={`input ${gpsTried ? "" : "cursor-not-allowed bg-zinc-100"}`}
             value={pickupLocation}
             onChange={(e) => {
               setPickupLocation(e.target.value);
@@ -313,18 +332,15 @@ export default function TripIntake() {
             }}
             maxLength={120}
             autoComplete="address-level3"
-            placeholder="Barangay and city, e.g., Kapitolyo, Pasig"
+            placeholder={gpsTried ? "Barangay and city, e.g., Balibago, Santa Rosa, Laguna" : "Tap the GPS button first"}
             required
             aria-describedby="pickup-help"
           />
-          {gpsStatus.message && (
-            <p role="status" className={`mt-1 text-sm ${gps ? "text-ube-800" : "text-amber-800"}`}>
-              {gpsStatus.message}
-            </p>
-          )}
           <p id="pickup-help" className="mt-1 text-sm text-zinc-600">
-            Where should the van pick up the patient? Use GPS if you&apos;re there now, or type the barangay and city; the driver calls you
-            for the exact address.
+            {gpsTried && !gps && pickupLocation
+              ? "We measure the distance from the barangay and city you typed. The driver calls you for the exact address."
+              : "Not at the pick-up place now? Tap GPS anyway, then type the correct barangay and city. The driver calls you for the exact address."}
+            {gps && " Place names: BigDataCloud, © OpenStreetMap contributors."}
           </p>
         </Gate>
         <Gate open={open("destination")} current={nextUp?.key === "destination"} needs="the pickup location">
@@ -448,6 +464,7 @@ export default function TripIntake() {
           disabled={
             loading ||
             description.trim().length < 20 ||
+            !gpsTried ||
             pickupLocation.trim().length < 3 ||
             destination.trim().length < 3 ||
             mobility === "unknown" ||

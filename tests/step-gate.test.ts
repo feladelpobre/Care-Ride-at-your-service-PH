@@ -6,6 +6,7 @@ const filled: Step1Fields = {
   description: "Mama uses a wheelchair, 3rd floor walang elevator",
   pickupLocation: "Kapitolyo, Pasig",
   hasGps: false,
+  gpsTried: true,
   destination: "St. Luke's BGC",
   mobility: "wheelchair_must_stay_seated",
   appointmentDate: "2026-11-20",
@@ -26,6 +27,17 @@ describe("step 1 is filled in order (AC33)", () => {
     expect(isUnlocked(noMobility, "appointmentDate")).toBe(false);
     expect(firstUnfinished(noMobility)?.label).toBe("how the patient moves");
     expect(isUnlocked({ ...noMobility, mobility: "walks_with_assistance" }, "caregiver")).toBe(true);
+  });
+
+  it("GPS comes first: a typed pickup counts only after the GPS button was tried (AC37)", () => {
+    const typedOnly = { ...filled, gpsTried: false };
+    expect(firstUnfinished(typedOnly)?.key).toBe("pickup");
+    expect(firstUnfinished(typedOnly)?.label).toMatch(/GPS button first/);
+    expect(isUnlocked(typedOnly, "destination")).toBe(false);
+    // GPS found the place, or GPS was tried (refused/failed/not exact) and the place was typed
+    expect(isUnlocked({ ...typedOnly, hasGps: true }, "destination")).toBe(true);
+    expect(isUnlocked({ ...typedOnly, gpsTried: true }, "destination")).toBe(true);
+    expect(isUnlocked({ ...typedOnly, gpsTried: true, pickupLocation: "" }, "destination")).toBe(false);
   });
 
   it("GPS counts as a pickup location", () => {

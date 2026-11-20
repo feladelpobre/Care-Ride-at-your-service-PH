@@ -24,7 +24,7 @@ In a 2024 PGH study of 413 wheelchair users, **82.3% named accessibility as thei
 | 🤖 | **AI trip intake:** free text (English/Filipino/Taglish) → structured trip details via the Vercel AI SDK `generateObject()` + zod schema |
 | 🦽 | **Mobility assessment:** deterministic rules pick an assist sedan or a ramp/lift van, 1 or 2 crew, and a stair-assist checklist |
 | 📝 | **Everything in step 1, then one tap:** pickup, destination, how the patient moves, caregiver hours, appointment date/time and pick-up time; "Plan my ride" returns the full plan and total cost |
-| 📍 | **GPS pickup (optional):** "Use my current location" measures the distance from the phone's position anywhere in the Philippines (rounded to ~100 m, never stored); trips over 60 km are flagged for the dispatcher |
+| 📍 | **GPS pickup (first step, required):** tap GPS and the barangay, city and province fill in; type to correct it only if it isn't the pick-up place. Typed towns cover Metro Manila, nearby provinces and major PH cities. GPS measures the distance from the phone's position anywhere in the Philippines (rounded to ~100 m, never stored); trips over 60 km are flagged for the dispatcher |
 | 💸 | **System-calculated distance and price:** the rider never types km; known hospitals or the destination's area (dash-insensitive); bands 0–5 / 5–10 / 10–20 / 20–40 / 40+ km; itemised quote; the server recalculates on booking |
 | ⏰ | **Pick-up time:** the app suggests the latest safe time (early arrival, travel, boarding, stairs); the rider can choose their own and is warned if it's too late |
 | 🧑‍⚕️ | **Hospital caregiver hours:** − / + buttons (none, then 2–12 h at ₱250/h); stays with the patient inside the hospital until the appointment is done |
