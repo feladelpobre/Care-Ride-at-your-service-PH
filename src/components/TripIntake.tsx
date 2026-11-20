@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Accessibility, BadgePercent, HeartHandshake, LocateFixed, Minus, Plus } from "lucide-react";
 import { track } from "@vercel/analytics";
@@ -10,7 +10,8 @@ import { buildPlan } from "@/lib/plan";
 import { HOSPITALS, gpsPlaceName, isInServiceArea } from "@/lib/geo";
 import { lookupPlace } from "@/lib/placeName";
 import { firstUnfinished, isUnlocked, type Step1Fields } from "@/lib/stepGate";
-import { formatDateText, formatTimeText, maskDate, parseDateText, parseTimeText } from "@/lib/dateText";
+import { formatTimeText } from "@/lib/dateText";
+import { DateBox, TimeBox, todayManila } from "@/components/DateTimeBoxes";
 import { formatManilaDateTime } from "@/lib/format";
 import { detectEmergency, EMERGENCY_MESSAGE } from "@/lib/emergency";
 import { missingRequiredDetails, REQUIRED_LABELS, type RequiredField } from "@/lib/required";
@@ -947,11 +948,6 @@ function HoursStepper({ value, onChange, labelledBy }: { value: number; onChange
   );
 }
 
-/** Today's date in Manila as YYYY-MM-DD (the earliest appointment date). */
-function todayManila(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
-
 /** The "fill this in now" label shown on the current part of step 1 (AC33). */
 function NextLabel() {
   return (
@@ -998,102 +994,6 @@ function Gate({
       <fieldset disabled={!open} className={`min-w-0 ${open ? "" : "pointer-events-none select-none opacity-40 grayscale"}`}>
         {children}
       </fieldset>
-    </div>
-  );
-}
-
-/**
- * Typed date box, MM/DD/YYYY (AC34): faster than scrolling the phone's date wheel.
- * Slashes are added while typing; the app stores YYYY-MM-DD only when the date is real and not in the past.
- */
-function DateBox({ id, value, onChange, min }: { id: string; value: string; onChange: (iso: string) => void; min: string }) {
-  const [text, setText] = useState(formatDateText(value));
-  // Keep the box in step if the date is changed elsewhere
-  useEffect(() => {
-    if (parseDateText(text) !== value && value) setText(formatDateText(value));
-  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
-  const iso = parseDateText(text);
-  const error =
-    text.length >= 10 && !iso ? "Not a real date. Use MM/DD/YYYY, e.g., 11/20/2026." : iso && iso < min ? "Choose today or a later date." : null;
-  return (
-    <div>
-      <input
-        id={id}
-        className={`input ${error ? "border-2 border-red-500" : ""}`}
-        inputMode="numeric"
-        autoComplete="off"
-        placeholder="MM/DD/YYYY"
-        maxLength={10}
-        value={text}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={`${id}-hint`}
-        onChange={(e) => {
-          const next = maskDate(e.target.value);
-          setText(next);
-          const parsed = parseDateText(next);
-          onChange(parsed && parsed >= min ? parsed : "");
-        }}
-      />
-      <p id={`${id}-hint`} className={`mt-1 text-sm ${error ? "font-medium text-red-700" : "text-zinc-600"}`}>
-        {error ?? "Type the date as MM/DD/YYYY, e.g., 11/20/2026."}
-      </p>
-    </div>
-  );
-}
-
-/**
- * Typed time box, hh:mm AM/PM (AC34): faster than scrolling the time wheel.
- * Accepts "9:00 AM", "9am", "2:30pm" or 24-hour "14:30"; the app stores 24-hour HH:mm.
- */
-function TimeBox({
-  id,
-  value,
-  onChange,
-  optional = false,
-  className = "",
-  describedBy,
-}: {
-  id: string;
-  value: string;
-  onChange: (hhmm: string) => void;
-  optional?: boolean;
-  className?: string;
-  describedBy?: string;
-}) {
-  const [text, setText] = useState(formatTimeText(value));
-  // Keep the box in step when the time is set elsewhere (e.g. "Use 07:50 AM")
-  useEffect(() => {
-    if (parseTimeText(text) !== value) setText(value ? formatTimeText(value) : text);
-  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [left, setLeft] = useState(false);
-  const parsed = parseTimeText(text);
-  // Only complain once the rider has left the box (or typed AM/PM), not mid-typing
-  const error = text.trim() && !parsed && (left || /m$/i.test(text.trim())) ? "Use hh:mm AM or PM, e.g., 09:00 AM or 2:30 PM." : null;
-  return (
-    <div className={className}>
-      <input
-        id={id}
-        className={`input ${error ? "border-2 border-red-500" : ""}`}
-        autoComplete="off"
-        autoCapitalize="characters"
-        placeholder="hh:mm AM"
-        maxLength={8}
-        value={text}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={[`${id}-hint`, describedBy].filter(Boolean).join(" ")}
-        onChange={(e) => {
-          setText(e.target.value);
-          onChange(parseTimeText(e.target.value) ?? "");
-        }}
-        onFocus={() => setLeft(false)}
-        onBlur={() => {
-          setLeft(true);
-          if (parsed) setText(formatTimeText(parsed));
-        }}
-      />
-      <p id={`${id}-hint`} className={`mt-1 text-sm ${error ? "font-medium text-red-700" : "text-zinc-600"}`}>
-        {error ?? `Type the time as hh:mm AM or PM, e.g., 09:00 AM or 2:30 PM.${optional ? " Optional." : ""}`}
-      </p>
     </div>
   );
 }

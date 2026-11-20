@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DateBox, TimeBox, todayManila } from "@/components/DateTimeBoxes";
 import { Star } from "lucide-react";
 import { ISSUE_TYPES, type IssueType } from "@/lib/feedback";
 import { formatManilaDateTime } from "@/lib/format";
@@ -15,7 +16,10 @@ export default function FeedbackForm({ initialReference }: { initialReference: s
   const [caregiver, setCaregiver] = useState(0);
   const [onTime, setOnTime] = useState<"yes" | "no" | "unsure" | "">("");
   const [issues, setIssues] = useState<IssueType[]>([]);
-  const [incidentAt, setIncidentAt] = useState("");
+  // Typed date and time (AC34); sent as Philippine local time "YYYY-MM-DDTHH:mm"
+  const [incidentDate, setIncidentDate] = useState("");
+  const [incidentTime, setIncidentTime] = useState("");
+  const incidentAt = incidentDate && incidentTime ? `${incidentDate}T${incidentTime}` : "";
   const [driverName, setDriverName] = useState("");
   const [caregiverName, setCaregiverName] = useState("");
   const [details, setDetails] = useState("");
@@ -154,20 +158,18 @@ export default function FeedbackForm({ initialReference }: { initialReference: s
         <legend className="mb-2 text-lg font-bold text-ube-950">Details</legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="when" className="label">
-              When did it happen?
+            <label htmlFor="whenDate" className="label">
+              When did it happen? Date
             </label>
-            <input
-              id="when"
-              type="datetime-local"
-              className="input"
-              max={manilaNowLocal()}
-              suppressHydrationWarning
-              value={incidentAt}
-              onChange={(e) => setIncidentAt(e.target.value)}
-            />
+            <DateBox id="whenDate" value={incidentDate} onChange={setIncidentDate} max={todayManila()} optional />
           </div>
-          <div className="hidden sm:block" />
+          <div>
+            <label htmlFor="whenTime" className="label">
+              Time
+            </label>
+            <TimeBox id="whenTime" value={incidentTime} onChange={setIncidentTime} optional />
+            {incidentDate && !incidentTime && <p className="mt-1 text-sm font-medium text-amber-800">Add the time too, so we know when it happened.</p>}
+          </div>
           <div>
             <label htmlFor="dname" className="label">
               Driver&apos;s name (if you know it)
@@ -248,9 +250,4 @@ function Stars({ label, value, onChange, required }: { label: string; value: num
       </div>
     </div>
   );
-}
-
-/** Current Philippine time as "YYYY-MM-DDTHH:mm" for the datetime-local max (no future incidents). */
-function manilaNowLocal(): string {
-  return new Date(Date.now() + 8 * 3_600_000).toISOString().slice(0, 16);
 }
