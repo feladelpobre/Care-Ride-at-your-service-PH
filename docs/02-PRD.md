@@ -1,12 +1,12 @@
 # Care Ride at your service-PH: Product Requirements Document (1 page)
 
-**Owner:** Feladel "Peng" Pobre · **Version:** v1.4 (MVP, revised after user trials) · **Last updated:** 17 Nov 2026
+**Owner:** Feladel "Peng" Pobre · **Version:** v1.5 (MVP, revised after user trials) · **Last updated:** 21 Nov 2026
 
 ## 1. Problem Statement
-Caregivers in Metro Manila arranging hospital and dialysis trips for wheelchair users have no simple way to book a ride **matched to the patient's mobility needs**. Public transport is inaccessible, accessible vans are booked by phone, and caregivers re-explain stairs, wheelchair type and equipment every time; mismatches cause unsafe lifting and missed appointments. In a PGH survey of 413 wheelchair users, **82.3% named accessibility as their top barrier** to follow-up care (Acta Medica Philippina, 2024).
+Caregivers in Metro Manila and across the Philippines arranging hospital and dialysis trips for wheelchair users have no simple way to book a ride **matched to the patient's mobility needs**. Public transport is inaccessible, accessible vans are booked by phone, and caregivers re-explain stairs, wheelchair type and equipment every time; mismatches cause unsafe lifting and missed appointments. In a PGH survey of 413 wheelchair users, **82.3% named accessibility as their top barrier** to follow-up care (Acta Medica Philippina, 2024).
 
 ## 2. Target Users
-- **Primary: the caregiver-coordinator** (adult child or relative, 35–55, Metro Manila) who needs a safe, correctly equipped ride booked in under 2 minutes, in English or Taglish.
+- **Primary: the caregiver-coordinator** (adult child or relative, 35–55; Metro Manila first, then anywhere in the Philippines) who needs a safe, correctly equipped ride booked in under 2 minutes, in English or Taglish.
 - **Secondary: the accessible-van dispatcher/driver** who needs a complete brief: vehicle, crew, stairs, equipment and pick-up time.
 
 ## 3. Core Features (MVP) with Acceptance Criteria
@@ -17,7 +17,7 @@ Caregivers in Metro Manila arranging hospital and dialysis trips for wheelchair 
 | F3 | **Step-1 inputs and pick-up time:** pickup (+ optional GPS), destination, mobility, caregiver hours (− / +), appointment, pick-up time; the app suggests the latest safe time | Appointment 09:00 → suggested time worked back from travel, boarding and stairs; a later rider time shows a warning (AC29–AC31) |
 | F4 | **System-calculated distance and price:** distance bands, add-ons, 20% Senior/PWD fare discount; the rider never types km | Pasig → St. Luke's BGC ≈ 6.5 km; WAV + 2 crew + 3 floors (5–10 km band) = ₱1,800; Senior/PWD takes −₱240 off a ₱1,200 fare only (AC11–AC13, AC26) |
 | F5 | **Safety and trust:** emergency words → "Call 911" before the AI; "I am human" check; required mobile, email and consent; server recomputes every price | "Chest pain" → emergency without calling the AI; a tampered fare is recomputed; booking APIs refuse without the human pass (AC2, AC8, AC18, AC28) |
-| F6 | **Confirm, notify, dispatch, feedback:** CR- reference, confirmation and 2-hour reminder emails, admin-only dispatcher board, ratings and complaint tickets | Booking appears as "Pending" on `/dispatch`; the email contains the reference; a safety complaint is marked Urgent (AC17, AC19, AC22–AC24) |
+| F6 | **Confirm, notify, dispatch, feedback:** CR- reference, confirmation and 2-hour reminder emails, admin-only dispatcher board, ratings and complaint tickets | Booking appears as "To call" on `/dispatch` until the dispatcher taps "Called & confirmed"; the email contains the reference; a safety complaint is marked Urgent with a 2-hour callback (AC17, AC19, AC22–AC24, AC35) |
 
 ## 4. Out of Scope (v1)
 Real payments and insurance claims · live driver tracking and real road routing (v2: maps API, issue #1) · round-trip and waiting-time pricing · driver accounts and SMS/Viber/OTP · emergency transport (always 911) · storing names, diagnoses or medical records (RA 10173) · native apps · **booking the hospital appointment itself** (no common hospital API, schedule-sync and liability risks, and sensitive data).

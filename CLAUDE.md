@@ -19,10 +19,10 @@ A Next.js 14 web app that turns a caregiver's plain-language trip description in
 5. **Never trust the client.** `/api/bookings` must recompute `assess()` from the extraction.
 6. **Compliance:** keep the 20% Senior/PWD discount on the ride fare, the consent box, `/privacy` and `/terms` in line with `docs/03-regulatory-compliance.md`. Never call our vehicles "ambulances".
 7. **Data minimisation (PH Data Privacy Act):** don't add fields for full names, diagnoses or exact addresses without updating `spec.md §7`.
-8. **Every feature or bugfix needs a test** in `tests/` that maps to an acceptance criterion ID (AC1…AC23) in `spec.md`.
-10. **The dispatcher board is admin-only.** Keep `/dispatch` behind `src/middleware.ts`; never link it from public pages; any new admin page must be added to the middleware matcher.
-11. **"I am human" check comes before the app (AC28).** Customer pages and their APIs stay in the `src/middleware.ts` matcher; the Turnstile token is always confirmed on the server (`/api/human`); `/verify` must keep the Call 911 button.
-9. **Notifications never block a booking.** `sendMail()` never throws; log the error type only, never the address or body. Email addresses are shown masked on screens.
+8. **Every feature or bugfix needs a test** in `tests/` that maps to an acceptance criterion ID (AC1…AC40, and new ones after) in `spec.md`.
+9. **The dispatcher board is admin-only.** Keep `/dispatch` behind `src/middleware.ts` (public pages show only the 🔒 Staff link, which opens the login page); staff actions such as `/api/admin/status` check the admin cookie themselves; any new admin page must be added to the middleware matcher.
+10. **"I am human" check comes before the app (AC28).** Customer pages and their APIs stay in the `src/middleware.ts` matcher; the Turnstile token is always confirmed on the server (`/api/human`); `/verify` must keep the Call 911 button.
+11. **Notifications never block a booking.** `sendMail()` never throws; log the error type only, never the address or body. Email addresses are shown masked on screens.
 
 ## Code style
 - TypeScript strict; no `any` (use `unknown` + zod parsing).

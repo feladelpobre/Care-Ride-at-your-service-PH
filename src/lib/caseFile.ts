@@ -1,7 +1,7 @@
 /**
  * Content for the public Case File page (/case, AC32).
  * Every fact here comes from this repo's own documents: docs/01-idea-validation.md, docs/02-PRD.md,
- * spec.md, docs/eval-cases.md and the UAT report (Nov 12–17, 2026). The worked fare example is not
+ * spec.md, docs/eval-cases.md and the UAT report (Nov 12–21, 2026). The worked fare example is not
  * written here: the page computes it with the same rules the app uses (src/lib/plan.ts).
  */
 import type { TripExtraction } from "./schemas";
@@ -19,7 +19,7 @@ export const VALIDATION: { step: string; title: string; finding: string; source:
   { step: "7", title: "Stress test", finding: "5 risks with real precedents (thin supply, NEMT bankruptcies, volume, safety, privacy), each with a mitigation.", source: "Skeptical-VC review" },
 ];
 
-/** UAT on the live app, Nov 12–17, 2026: what broke, what changed. */
+/** UAT on the live app, Nov 12–21, 2026: what broke, what changed. */
 export const UAT: { date: string; found: string; fix: string }[] = [
   { date: "Nov 12", found: "Testers left \"how the patient moves\" blank; the app assumed the costliest van", fix: "Mobility is required and chosen in step 1" },
   { date: "Nov 12", found: "\"How will I know my booking went through?\"", fix: "Confirmation email with the CR- reference, plus a reminder 2 hours before pick-up" },

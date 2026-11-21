@@ -1,8 +1,8 @@
 # Care Ride at your service-PH — Idea Validation Report
 
-**Author:** Feladel "Peng" Pobre · **Course:** Week 4 Graded Mini Project 4.2 · **Date:** 11 Nov 2026
+**Author:** Feladel "Peng" Pobre · **Course:** Week 4 Graded Mini Project 4.2 · **Date:** 11 Nov 2026 · **Updated:** 21 Nov 2026 (Step 6 trial results)
 
-> **One-liner:** Care Ride at your service-PH helps family caregivers in Metro Manila book a safe, wheelchair-appropriate ride to hospital and dialysis appointments by describing the trip in plain language. AI turns the description into a structured booking, a mobility assessment and a driver brief.
+> **One-liner:** Care Ride at your service-PH helps family caregivers in Metro Manila and across the Philippines book a safe, wheelchair-appropriate ride to hospital and dialysis appointments by describing the trip in plain language. AI turns the description into a structured booking, a mobility assessment and a driver brief.
 
 This report follows the 7-step validation framework from Week 4A. Each step states the **hypothesis tested**, the **evidence found** (with sources) and a **verdict**.
 
@@ -34,7 +34,7 @@ Filipino patients who use wheelchairs or cannot walk (and the family members who
 **Hypothesis:** A reachable, identifiable group feels this pain badly enough to pay.
 
 **Primary user persona — "Ate Liza", the caregiver-coordinator**
-- **Who:** 35–55, Metro Manila, adult daughter or son (often an OFW-family member or working professional) who books rides for a parent.
+- **Who:** 35–55, Metro Manila first (then nearby provinces and other Philippine cities), adult daughter or son (often an OFW-family member or working professional) who books rides for a parent.
 - **Patient:** a senior or PWD parent who uses a wheelchair, often on dialysis or rehab 2–3× a week.
 - **Goals:** get the parent to the appointment on time, safely, without having to lift them down stairs alone.
 - **Frustrations:** calling several providers; explaining the same mobility details every time; drivers arriving in a sedan when a ramp van was needed; no help on stairs.
@@ -64,7 +64,7 @@ Filipino patients who use wheelchairs or cannot walk (and the family members who
 - Global NEMT market: **USD 9.82B in 2025 → USD 16.24B by 2032 (7.41% CAGR)**, with wheelchair transport and dialysis visits as named segments. — ResearchAndMarkets via BusinessWire, 15 Dec 2025: https://www.businesswire.com/news/home/20251215150114/en
 - The Philippine dialysis market alone is estimated at **USD 1.74B (2025)**. — Ken Research: https://www.kenresearch.com/industry-reports/philippines-dialysis-market
 
-**Bottom-up (Metro Manila, conservative)**
+**Bottom-up (Metro Manila as the beachhead, conservative)**
 
 | Driver | Figure | Source |
 |---|---|---|
@@ -137,6 +137,18 @@ The founder is a **QA Manager** with a Chemical Engineering background. The prod
 
 The deployed app doubles as the instrument for test #2: Vercel Analytics tracks the `trip_analyzed` and `booking_confirmed` events.
 
+**Results so far (live trial, 11–21 Nov 2026)**
+
+| Evidence | Result |
+|---|---|
+| Live trial rides by test riders (friends, on their own phones) | Real feedback on 12–13 Nov: two 5-star reviews, one with "Everything went smoothly" |
+| Trips planned → ride requests (Insights panel, last 30 days) | 33 trips planned, 16 ride requests: **48% plan-to-request, above the 40% PRD target** |
+| What riders added | 69% a hospital caregiver, 56% a wheelchair, 75% the Senior/PWD discount: the add-ons answer a real need |
+| Test riders' change requests | 20 findings in user acceptance testing (UAT report, rows A–Q), e.g., GPS outside Metro Manila, step order, typed dates; all fixed and re-tested |
+| Devices | Windows laptop, iPhone (Chrome and Safari) and Samsung Android: all passed |
+
+*Caveat:* the counts include the founder's own test runs, so they show that the funnel works, not market demand yet. Tests 1 and 3 (concierge bookings, operator interviews) are the next step before launch.
+
 **Pattern used:** concierge MVP before automation (a common IndieHackers/YC validation approach). Price anchor: Wheelmobile's ₱700 per trip shows people already pay a premium for accessibility.
 
 ---
@@ -163,8 +175,8 @@ The deployed app doubles as the instrument for test #2: Vercel Analytics tracks 
 |---|---|
 | 1. Problem | ✅ Accessibility is the #1 barrier for 82.3% of surveyed PGH wheelchair patients |
 | 2. Customer | ✅ Caregiver-coordinator; 2.8M registered PWDs; already paying ~₱700/trip |
-| 3. Market | ✅ USD 9.8B global NEMT; ~605K accessible dialysis trips/yr SAM in Metro Manila |
+| 3. Market | ✅ USD 9.8B global NEMT; ~605K accessible dialysis trips/yr SAM in Metro Manila (beachhead), then nationwide |
 | 4. Competition | ✅ No competitor captures mobility needs before dispatch |
 | 5. Edge | ✅ Ageing + dialysis growth + structured-output LLMs; QA-style safety rules |
-| 6. Cheap test | ✅ 3 experiments designed; the MVP doubles as the fake-door test |
+| 6. Cheap test | ✅ 3 experiments designed; live trial so far: 48% plan-to-request (target 40%), 5-star feedback from test riders, 20 UAT findings fixed |
 | 7. Stress test | ✅ 5 risks with precedents and mitigations |
