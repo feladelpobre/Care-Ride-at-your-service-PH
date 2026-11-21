@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { bookingRequestSchema } from "@/lib/schemas";
 import { buildPlan } from "@/lib/plan";
-import { countRecentBookingsByPhone, markNotified, recordEvent, saveBooking } from "@/lib/storage";
+import { countRecentBookingsByPhone, markNotified, maskName, maskPhone, recordEvent, saveBooking } from "@/lib/storage";
 import { sendMail } from "@/lib/mailer";
-import { confirmationEmail } from "@/lib/notifications";
+import { confirmationEmail, dispatchInbox, newRequestAlertEmail } from "@/lib/notifications";
 import { bookingReference } from "@/lib/format";
 import { missingDetailsMessage, missingRequiredDetails } from "@/lib/required";
 
@@ -94,6 +94,9 @@ export async function POST(req: Request) {
     const mail = confirmationEmail(booking);
     const emailSent = await sendMail({ to: contactEmail, ...mail });
     if (emailSent) await markNotified(booking.id, "confirmation").catch(() => undefined);
+    // Alert the app's main mailbox so the dispatcher calls the rider (AC40); never blocks the booking
+    const inbox = dispatchInbox();
+    if (inbox) await sendMail({ to: inbox, ...newRequestAlertEmail(booking, maskName(booking.contactName), maskPhone(booking.contactPhone)) });
 
     return NextResponse.json(
       {

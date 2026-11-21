@@ -36,6 +36,7 @@ In a 2024 PGH study of 413 wheelchair users, **82.3% named accessibility as thei
 | 🚨 | **Safety guardrails:** an emergency red-flag check runs *before* the AI and shows "Call 911"; stretcher cases are blocked; the server recomputes all prices |
 | 📋 | **Dispatcher board (admin login):** every request shows its reference (e.g. CR-4D718C0B) and the date and time it was requested, with the driver brief; names masked for privacy |
 | 🔑 | **Staff login by email link:** a dispatcher who forgets the password enters their work email on the login page and gets a 15-minute login link (only emails you list in `DISPATCH_STAFF_EMAILS`); works while the admin is away |
+| 📬 | **New-request alert:** every ride request also emails the app's mailbox (masked contact, link to the board), so a dispatcher knows to call |
 | 📞 | **Call workflow:** a "To call now" bar on the board; one-tap Call buttons (number stays masked); mark rides "Called & confirmed", "Trip done" or "Cancelled", and feedback "Called back" or "Resolved"; urgent callbacks are due in 2 h, others in 24 h, overdue ones turn red |
 | ❓ | **FAQ + "Ask a question" helper:** 19 answers on booking, calls, prices, safety (incl. rain, floods and typhoons) and privacy; the AI only picks which FAQ answers the question (English or Filipino) and the app shows that answer word for word, so it can't invent prices; emergencies get "Call 911" first |
 
@@ -96,6 +97,7 @@ Without the Supabase variables, bookings are kept in memory (demo mode).
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | optional | Booking confirmation and 2-hour reminder emails |
 | `CRON_SECRET` | optional | Protects `/api/reminders` (called by Supabase `pg_cron`) |
 | `DISPATCH_USER`, `DISPATCH_PASSWORD` | for `/dispatch` | Dispatcher login; the board stays closed without them |
+| `DISPATCH_NOTIFY_EMAIL` | optional | Where "New ride request" alerts go; defaults to `SMTP_USER`, the app's own mailbox |
 | `DISPATCH_STAFF_EMAILS` | optional | Staff work emails (comma-separated) that can log in by a 15-minute email link if they forget the password; needs the SMTP settings |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | optional | "I am human" check; the site key is public by design, the secret is server-only |
 

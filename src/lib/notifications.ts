@@ -73,3 +73,31 @@ export function isReminderDue(b: Pick<Booking, "appointmentDate" | "pickupTime">
   const at = pickupInstant(b);
   return at !== null && at > now && at - now <= 2 * 3_600_000;
 }
+
+/** Where new-request alerts go (AC40): DISPATCH_NOTIFY_EMAIL, else the app's own mailbox (SMTP_USER). */
+export function dispatchInbox(env: Record<string, string | undefined> = process.env): string | null {
+  const to = (env.DISPATCH_NOTIFY_EMAIL || env.SMTP_USER || "").trim();
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to) ? to : null;
+}
+
+/**
+ * Alert to the app's main mailbox for every new ride request (AC40), so the dispatcher knows to call.
+ * Contact details are masked, as on the board; the full number is on the dispatcher board's Call button.
+ */
+export function newRequestAlertEmail(b: Booking, maskedName: string, maskedPhone: string) {
+  const ref = bookingReference(b.id);
+  const intro = `New ride request ${ref} from ${maskedName} (${maskedPhone}). Please call to confirm before any van is sent.`;
+  const lines = [
+    ...tripLines(b).slice(0, 4),
+    `Estimated price: ${peso(b.fareMin)}–${peso(b.fareMax)}`,
+    ...(b.companionHours > 0 ? [`Hospital caregiver: ${b.companionHours} h`] : []),
+    ...(b.wheelchairRental ? ["Bring a wheelchair"] : []),
+    ...(b.seniorPwdDiscount ? ["Senior/PWD discount: check the ID"] : []),
+  ];
+  const outro = `Open the dispatcher board to call the rider and mark the result: ${SITE}/dispatch`;
+  return {
+    subject: `New ride request ${ref} · ${b.appointmentDate ?? "date TBC"} ${b.pickupTime ?? ""}`.trim(),
+    text: [intro, "", ...lines, "", outro].join("\n"),
+    html: html("New ride request", intro, lines, outro),
+  };
+}

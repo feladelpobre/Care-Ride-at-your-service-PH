@@ -77,7 +77,8 @@ export const LINK_SENT_MESSAGE =
 export function staffEmails(list: string | undefined = process.env.DISPATCH_STAFF_EMAILS): string[] {
   return (list ?? "")
     .split(/[,;\s]+/)
-    .map((e) => e.trim().toLowerCase())
+    // Forgive how the list was typed in Vercel: quotes, "Name <email>", mailto:
+    .map((e) => e.trim().toLowerCase().replace(/^mailto:/, "").replace(/^["'<(\[]+|["'>)\].]+$/g, ""))
     .filter((e) => /^[\x21-\x7e]+$/.test(e) && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)); // plain ASCII emails only
 }
 

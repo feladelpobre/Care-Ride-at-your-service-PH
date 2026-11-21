@@ -122,3 +122,45 @@ describe("2-hour pickup reminder (AC23)", () => {
     expect(mail.text).toContain("about 2 hours, at 08:40");
   });
 });
+
+describe("the app's main mailbox is told about every new ride request (AC40)", () => {
+  beforeEach(() => {
+    sendMail.mockReset();
+    sendMail.mockResolvedValue(true);
+    delete process.env.DISPATCH_NOTIFY_EMAIL;
+    delete process.env.SMTP_USER;
+  });
+
+  it("sends the rider's confirmation and an alert to the app's mailbox (SMTP_USER, or DISPATCH_NOTIFY_EMAIL if set)", async () => {
+    process.env.SMTP_USER = "careride.app@example.com";
+    expect((await book({ contactPhone: "09290000701" })).status).toBe(201);
+    const to = sendMail.mock.calls.map((c) => (c[0] as { to: string }).to);
+    expect(to).toEqual(["gina@example.com", "careride.app@example.com"]);
+    const alert = sendMail.mock.calls[1][0] as { subject: string; text: string };
+    expect(alert.subject).toMatch(/^New ride request CR-[0-9A-F]{8}/);
+    expect(alert.text).toMatch(/Please call to confirm/);
+    expect(alert.text).toMatch(/\/dispatch/);
+    // Contact details masked, as on the board
+    expect(alert.text).toContain("G***");
+    expect(alert.text).toContain("0929 *** 0701");
+    expect(alert.text).not.toContain("09290000701");
+    expect(alert.text).not.toContain("gina@example.com");
+
+    sendMail.mockReset();
+    sendMail.mockResolvedValue(true);
+    process.env.DISPATCH_NOTIFY_EMAIL = "dispatch.desk@example.com";
+    await book({ contactPhone: "09290000702" });
+    expect((sendMail.mock.calls[1][0] as { to: string }).to).toBe("dispatch.desk@example.com");
+  });
+
+  it("a failed alert never loses the booking, and no alert is sent when no mailbox is set", async () => {
+    process.env.SMTP_USER = "careride.app@example.com";
+    sendMail.mockResolvedValue(false);
+    expect((await book({ contactPhone: "09290000703" })).status).toBe(201);
+    delete process.env.SMTP_USER;
+    sendMail.mockReset();
+    sendMail.mockResolvedValue(true);
+    await book({ contactPhone: "09290000704" });
+    expect(sendMail).toHaveBeenCalledTimes(1);
+  });
+});

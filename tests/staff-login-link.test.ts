@@ -121,3 +121,9 @@ describe("staff can log in with an email link when the password is forgotten (AC
     expect(sent).toHaveLength(0);
   });
 });
+
+describe("the staff list forgives how it was typed in Vercel (AC39)", () => {
+  it("ignores quotes, angle brackets, mailto: and a trailing dot", () => {
+    expect(staffEmails(`"a@x.ph", <b@y.com>; mailto:c@z.org, 'd@w.net'. Name <e@v.io>`)).toEqual(["a@x.ph", "b@y.com", "c@z.org", "d@w.net", "e@v.io"]);
+  });
+});
