@@ -33,14 +33,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
   }
   const email = parsed.data.email;
-  if (isStaffEmail(email) && rateLimit(`admin-link-email:${email}`, 3, 15 * 60_000)) {
+  const onList = isStaffEmail(email);
+  const allowed = onList && rateLimit(`admin-link-email:${email}`, 3, 15 * 60_000);
+  let sent = false;
+  if (allowed) {
     const link = `${SITE}/admin/link?token=${encodeURIComponent(await createLoginLinkToken(email))}`;
-    await sendMail({
+    sent = await sendMail({
       to: email,
       subject: "Your Care Ride dispatcher login link",
       text: `Tap this link to log in to the Care Ride dispatcher board:\n\n${link}\n\nIt works for ${LINK_MINUTES} minutes. If you didn't ask for it, ignore this email; nobody can log in without it.`,
       html: `<p>Tap the button to log in to the Care Ride dispatcher board.</p><p><a href="${link}" style="display:inline-block;background:#5B3E96;color:#fff;padding:12px 20px;border-radius:10px;font-weight:bold;text-decoration:none">Log in to the dispatcher board</a></p><p>It works for ${LINK_MINUTES} minutes. If you didn't ask for it, ignore this email; nobody can log in without it.</p>`,
     });
   }
+  // For the admin's troubleshooting in Vercel logs: yes/no flags only, never the email address
+  console.info("login-link: request", `onList=${onList ? "yes" : "no"}`, `limited=${onList && !allowed ? "yes" : "no"}`, `sent=${sent ? "yes" : "no"}`);
   return NextResponse.json({ ok: true, message: LINK_SENT_MESSAGE });
 }

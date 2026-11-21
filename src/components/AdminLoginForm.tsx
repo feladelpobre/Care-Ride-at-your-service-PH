@@ -11,6 +11,11 @@ export default function AdminLoginForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    // The button always looks tappable (blue); empty boxes get a message instead of a silent grey button
+    if (!username.trim() || !password) {
+      setError(!username.trim() ? "Type your username." : "Type your password.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/admin/login", {
@@ -46,7 +51,6 @@ export default function AdminLoginForm() {
           spellCheck={false}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          required
           maxLength={100}
         />
       </div>
@@ -61,7 +65,6 @@ export default function AdminLoginForm() {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
           maxLength={200}
         />
       </div>
@@ -70,7 +73,7 @@ export default function AdminLoginForm() {
           {error}
         </p>
       )}
-      <button type="submit" className="btn-primary w-full" disabled={busy || !username.trim() || !password}>
+      <button type="submit" className={"min-h-[48px] w-full rounded-xl bg-blue-700 px-5 text-[17px] font-bold text-white shadow-sm hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-wait disabled:bg-blue-500"} disabled={busy}>
         {busy ? "Logging in…" : "Log in"}
       </button>
     </form>

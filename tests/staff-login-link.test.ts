@@ -71,6 +71,17 @@ describe("staff can log in with an email link when the password is forgotten (AC
     expect(sent[0].text).toMatch(/15 minutes/);
   });
 
+  it("logs only yes/no flags for troubleshooting, never the email address", async () => {
+    const log = vi.spyOn(console, "info").mockImplementation(() => {});
+    await ask("dispatcher.one@example.com");
+    await ask("stranger@example.com");
+    const lines = log.mock.calls.map((c) => c.join(" "));
+    expect(lines[0]).toBe("login-link: request onList=yes limited=no sent=yes");
+    expect(lines[1]).toBe("login-link: request onList=no limited=no sent=no");
+    expect(lines.join(" ")).not.toMatch(/@/);
+    log.mockRestore();
+  });
+
   it("the link always points to the real site, even if a request fakes its Host", async () => {
     await requestLink(
       new Request("http://evil.example/api/admin/login-link", {

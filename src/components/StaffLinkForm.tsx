@@ -8,9 +8,15 @@ export default function StaffLinkForm() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sentAt, setSentAt] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
+      setMessage(null);
+      setError("Type your staff email, e.g., name@gmail.com.");
+      return;
+    }
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -22,7 +28,10 @@ export default function StaffLinkForm() {
       });
       const data = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
       if (!res.ok) setError(data.error ?? "Could not send the link. Please try again.");
-      else setMessage(data.message ?? "Check your email.");
+      else {
+        setMessage(data.message ?? "Check your email.");
+        setSentAt(new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }).format(new Date()));
+      }
     } catch {
       setError("No connection. Please try again.");
     } finally {
@@ -43,16 +52,23 @@ export default function StaffLinkForm() {
           autoComplete="email"
           placeholder="Your staff email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setSentAt(null);
+          }}
           maxLength={200}
-          required
         />
-        <button type="submit" className="btn-primary min-h-[44px]" disabled={busy || !email.includes("@")}>
-          {busy ? "Sending…" : "Send link"}
+        <button type="submit" className={"min-h-[48px] sm:w-auto w-full rounded-xl bg-blue-700 px-5 text-[17px] font-bold text-white shadow-sm hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:cursor-wait disabled:bg-blue-500"} disabled={busy}>
+          {busy ? "Sending…" : sentAt ? "Send again" : "Send link"}
         </button>
       </div>
       <div aria-live="polite">
-        {message && <p className="rounded-lg border border-green-300 bg-green-50 p-3 text-sm font-medium text-green-900">{message}</p>}
+        {message && (
+          <p className="rounded-lg border border-green-300 bg-green-50 p-3 text-sm font-medium text-green-900">
+            ✓ {sentAt ? `Sent at ${sentAt}. ` : ""}
+            {message}
+          </p>
+        )}
         {error && (
           <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-medium text-red-800">
             {error}
