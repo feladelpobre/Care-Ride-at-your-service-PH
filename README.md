@@ -35,6 +35,7 @@ In a 2024 PGH study of 413 wheelchair users, **82.3% named accessibility as thei
 | 📱 | **Anti-fraud:** a PH mobile number is required for every request (confirmation call), with a limit of 3 requests per number per day |
 | 🚨 | **Safety guardrails:** an emergency red-flag check runs *before* the AI and shows "Call 911"; stretcher cases are blocked; the server recomputes all prices |
 | 📋 | **Dispatcher board (admin login):** every request shows its reference (e.g. CR-4D718C0B) and the date and time it was requested, with the driver brief; names masked for privacy |
+| 🔑 | **Staff login by email link:** a dispatcher who forgets the password enters their work email on the login page and gets a 15-minute login link (only emails you list in `DISPATCH_STAFF_EMAILS`); works while the admin is away |
 | 📞 | **Call workflow:** a "To call now" bar on the board; one-tap Call buttons (number stays masked); mark rides "Called & confirmed", "Trip done" or "Cancelled", and feedback "Called back" or "Resolved"; urgent callbacks are due in 2 h, others in 24 h, overdue ones turn red |
 | ❓ | **FAQ + "Ask a question" helper:** 19 answers on booking, calls, prices, safety (incl. rain, floods and typhoons) and privacy; the AI only picks which FAQ answers the question (English or Filipino) and the app shows that answer word for word, so it can't invent prices; emergencies get "Call 911" first |
 
@@ -95,6 +96,7 @@ Without the Supabase variables, bookings are kept in memory (demo mode).
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | optional | Booking confirmation and 2-hour reminder emails |
 | `CRON_SECRET` | optional | Protects `/api/reminders` (called by Supabase `pg_cron`) |
 | `DISPATCH_USER`, `DISPATCH_PASSWORD` | for `/dispatch` | Dispatcher login; the board stays closed without them |
+| `DISPATCH_STAFF_EMAILS` | optional | Staff work emails (comma-separated) that can log in by a 15-minute email link if they forget the password; needs the SMTP settings |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | optional | "I am human" check; the site key is public by design, the secret is server-only |
 
 Secrets are never committed: `.env*` is git-ignored, the only `NEXT_PUBLIC_` value is the public Turnstile site key, and CI runs **gitleaks** over the full history.
@@ -128,7 +130,7 @@ Each acceptance criterion in `spec.md` (AC1–AC36) maps to a test file.
 Add-ons: second crew +₱300 · stair assist ₱100/floor · wheelchair provided ₱150 · hospital companion/caregiver ₱250/h (min 2 h). **Senior Citizen / PWD: 20% off the ride fare** (not the add-ons). Distances are calculated by the system, not typed: phone GPS or the area's centre → hospital, straight line × 1.35 road factor.
 
 ## Limitations & roadmap (v2)
-See GitHub issue [#1 **"v2: Real road distance & traffic-aware ETA via maps API"**](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/issues/1). Also planned: SMS one-time code (OTP) to verify the mobile number, a public `/share` page so link previews and search work despite the human check, round-trip pricing, individual staff accounts with password reset by email, an acceptance flow, SMS/Viber notifications.
+See GitHub issue [#1 **"v2: Real road distance & traffic-aware ETA via maps API"**](https://github.com/feladelpobre/Care-Ride-at-your-service-PH/issues/1). Also planned: SMS one-time code (OTP) to verify the mobile number, a public `/share` page so link previews and search work despite the human check, round-trip pricing, individual staff accounts with their own passwords, an acceptance flow, SMS/Viber notifications.
 
 ## Privacy
 Demo data only. The app asks for a pickup *area* (not a home address) and never asks for diagnoses; the optional GPS position is rounded and used only for the distance, never stored. The dispatcher board at `/dispatch` needs an admin login (`DISPATCH_USER` / `DISPATCH_PASSWORD`) and masks contact names, numbers and emails. Designed with the PH Data Privacy Act (RA 10173) in mind.

@@ -1,8 +1,9 @@
 import AdminLoginForm from "@/components/AdminLoginForm";
+import StaffLinkForm from "@/components/StaffLinkForm";
 
 export const metadata = { title: "Dispatcher login · Care Ride at your service-PH", robots: { index: false, follow: false } };
 
-export default function AdminLoginPage({ searchParams }: { searchParams: { out?: string } }) {
+export default function AdminLoginPage({ searchParams }: { searchParams: { out?: string; link?: string } }) {
   return (
     <div className="mx-auto max-w-md space-y-6">
       <div>
@@ -14,15 +15,21 @@ export default function AdminLoginPage({ searchParams }: { searchParams: { out?:
           You&apos;re logged out.
         </p>
       )}
+      {searchParams.link === "expired" && (
+        <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-medium text-red-800">
+          That login link has expired or isn&apos;t valid. Ask for a new one below.
+        </p>
+      )}
       <AdminLoginForm />
       <section aria-labelledby="forgot-title" className="rounded-xl border-2 border-ube-100 bg-ube-50 p-4 text-sm text-ube-950">
         <h2 id="forgot-title" className="font-bold">
           Forgot the password?
         </h2>
         <p className="mt-1">
-          Ask the Care Ride admin to reset it. There is one shared staff login in this version, so there is no reset email. After 5 wrong
-          tries, wait 15 minutes before trying again.
+          Staff on the Care Ride list can log in with a link sent to their work email; no password needed. Or ask the Care Ride admin to
+          reset the password. After 5 wrong tries, wait 15 minutes before trying again.
         </p>
+        <StaffLinkForm />
       </section>
     </div>
   );

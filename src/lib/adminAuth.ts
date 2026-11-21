@@ -60,3 +60,52 @@ export async function verifySessionToken(token: string | undefined, now = Date.n
   if (!exp || !sig || !/^\d+$/.test(exp) || Number(exp) <= now) return false;
   return safeEqual(sig, await sign(exp, c));
 }
+
+/*
+ * Staff login by email link (AC39), for when the password is forgotten and the admin can't reset it
+ * (e.g. on leave abroad). DISPATCH_STAFF_EMAILS lists the staff work emails, separated by commas.
+ * A link is valid for 15 minutes; it is signed with the same key as the session, so changing the
+ * password also kills every link. No database is needed.
+ */
+export const LINK_MINUTES = 15;
+
+/** Same answer whether or not the email is on the staff list, so nobody can probe for staff emails. */
+export const LINK_SENT_MESSAGE =
+  "If this email is on the Care Ride staff list, we've sent a login link. It works for 15 minutes. Check your inbox and spam folder.";
+
+export function staffEmails(list: string | undefined = process.env.DISPATCH_STAFF_EMAILS): string[] {
+  return (list ?? "")
+    .split(/[,;\s]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => /^[\x21-\x7e]+$/.test(e) && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)); // plain ASCII emails only
+}
+
+export function isStaffEmail(email: string, list?: string): boolean {
+  const e = email.trim().toLowerCase();
+  return staffEmails(list).some((s) => safeEqual(s, e));
+}
+
+const toB64url = (s: string) => btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromB64url = (s: string) => {
+  try {
+    return atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+  } catch {
+    return null;
+  }
+};
+
+export async function createLoginLinkToken(email: string, now = Date.now(), c: Creds = env()): Promise<string> {
+  const e = email.trim().toLowerCase();
+  const exp = String(now + LINK_MINUTES * 60_000);
+  return `${exp}.${toB64url(e)}.${await sign(`link:${exp}:${e}`, c)}`;
+}
+
+/** The staff email the link was sent to, or null if the link is fake, expired, or the email was removed from the list. */
+export async function verifyLoginLinkToken(token: string | undefined, now = Date.now(), c: Creds = env(), list?: string): Promise<string | null> {
+  if (!token || !isAdminConfigured(c)) return null;
+  const [exp, mail, sig] = token.split(".");
+  if (!exp || !mail || !sig || !/^\d+$/.test(exp) || Number(exp) <= now) return null;
+  const email = fromB64url(mail);
+  if (!email || !safeEqual(sig, await sign(`link:${exp}:${email}`, c))) return null;
+  return isStaffEmail(email, list) ? email : null;
+}
