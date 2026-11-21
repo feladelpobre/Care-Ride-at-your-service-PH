@@ -158,7 +158,7 @@ export default function TripIntake() {
       }
       setGps(g);
       // Show something right away, then the real town/province name once it's looked up
-      const near = gpsPlaceName(g).replace("your GPS location", "").replace(/[()]/g, "").trim();
+      const near = gpsPlaceName(g).replace("your pick-up point", "").replace(/[()]/g, "").trim();
       setPickupLocation(near ? `${near[0].toUpperCase()}${near.slice(1)} (GPS)` : "Current location (GPS)");
       setGpsStatus({ busy: true, message: "Location found. Finding the town name…" });
       const name = await lookupPlace(g);
@@ -326,7 +326,7 @@ export default function TripIntake() {
             aria-describedby="pickup-title"
           >
             <LocateFixed aria-hidden size={18} />
-            {gpsStatus.busy ? "Finding your location…" : gps ? "Find my location again" : "Use my current location (GPS)"}
+            {gpsStatus.busy ? "Finding your location…" : gps && spotFor === null ? "Find my location again" : "Use my current location (GPS)"}
           </button>
           <label htmlFor="pickup" className={`mt-1 block text-sm font-bold ${gpsTried ? "text-ube-950" : "text-zinc-500"}`}>
             {gps && spotFor === null
@@ -341,7 +341,8 @@ export default function TripIntake() {
             className={`input ${gpsTried ? "" : "cursor-not-allowed bg-zinc-100"}`}
             value={pickupLocation}
             onChange={(e) => {
-              setPickupLocation(e.target.value);
+              // Once the rider edits it, it's their own text, not a GPS result (AC38)
+              setPickupLocation(e.target.value.replace(/\s*\(GPS\)/gi, ""));
               gpsRequest.current++;
               setSpotFor(null);
               if (gps || gpsStatus.busy) {

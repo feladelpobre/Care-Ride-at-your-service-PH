@@ -155,10 +155,10 @@ export function nearestCity(g: { lat: number; lng: number }): Place {
   return CITIES.reduce((best, c) => (haversineKm(g, c) < haversineKm(g, best) ? c : best), CITIES[0]);
 }
 
-/** A short name for a GPS pickup: "near Pasig" inside Metro Manila, otherwise just "your GPS location". */
+/** A short name for a pick-up point (phone GPS or a typed spot found on the map): "your pick-up point (near Pasig)". */
 export function gpsPlaceName(g: { lat: number; lng: number }): string {
   const c = nearestCity(g);
-  return haversineKm(g, c) <= 15 ? `your GPS location (near ${c.name})` : "your GPS location";
+  return haversineKm(g, c) <= 15 ? `your pick-up point (near ${c.name})` : "your pick-up point";
 }
 
 export type RouteEstimate = {
