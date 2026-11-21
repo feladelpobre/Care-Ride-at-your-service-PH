@@ -23,10 +23,10 @@ export default function AdminLoginPage({ searchParams }: { searchParams: { out?:
       <AdminLoginForm />
       <section aria-labelledby="forgot-title" className="rounded-xl border-2 border-ube-100 bg-ube-50 p-4 text-sm text-ube-950">
         <h2 id="forgot-title" className="font-bold">
-          Forgot the password?
+          Forgot the username or password?
         </h2>
         <p className="mt-1">
-          Staff on the Care Ride list can log in with a link sent to their work email; no password needed. Or ask the Care Ride admin to
+          Staff on the Care Ride list can log in with a link sent to their work email; no username or password needed. Or ask the Care Ride admin to
           reset the password. After 5 wrong tries, wait 15 minutes before trying again.
         </p>
         <StaffLinkForm />
