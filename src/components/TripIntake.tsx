@@ -142,7 +142,7 @@ export default function TripIntake() {
   function locateMe() {
     if (!("geolocation" in navigator)) {
       setGpsTried(true);
-      setGpsStatus({ busy: false, message: "This phone or browser can't share its location. Please type the barangay and city below." });
+      setGpsStatus({ busy: false, message: "This phone or browser can't share its location. Please type a street or nearby landmark, barangay and city below." });
       return;
     }
     const request = ++gpsRequest.current;
@@ -153,7 +153,7 @@ export default function TripIntake() {
       setGpsTried(true);
       if (!isInServiceArea(g)) {
         setGps(null);
-        setGpsStatus({ busy: false, message: "Your location looks outside the Philippines. Please type the pickup barangay and city." });
+        setGpsStatus({ busy: false, message: "Your location looks outside the Philippines. Please type a street or nearby landmark, barangay and city below." });
         return;
       }
       setGps(g);
@@ -184,8 +184,8 @@ export default function TripIntake() {
         busy: false,
         message:
           err.code === err.PERMISSION_DENIED
-            ? "Location is turned off for this browser. On iPhone: Settings → Privacy & Security → Location Services → Chrome (or Safari Websites) → While Using the App, then tap the button again. Or type the barangay and city."
-            : "We couldn't get your location right now. Move near a window or turn on Wi-Fi and try again, or type the barangay and city.",
+            ? "Location is turned off for this browser. On iPhone: Settings → Privacy & Security → Location Services → Chrome (or Safari Websites) → While Using the App, then tap the button again. Or type a street or nearby landmark, barangay and city below."
+            : "We couldn't get your location right now. Move near a window or turn on Wi-Fi and try again, or type a street or nearby landmark, barangay and city below.",
       });
     };
 
