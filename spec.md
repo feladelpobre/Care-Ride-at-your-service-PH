@@ -209,6 +209,7 @@ Add-ons: second crew member +₱300; stair assist +₱100 per floor (only when c
 | 1.1 | Replaced "exact address" with "pickup area"; masked names on the board | Review: Data Privacy Act data-minimisation |
 | 1.2 | Replaced the flat fare with **distance-band pricing** plus an itemised quote; added the nearest-hospital estimate | Stakeholder review (founder): customers want to know the cost from their location to the (nearest) hospital |
 | 1.2 | Added the optional **hospital companion** service (hourly, until the appointment is completed) | Stakeholder review: a second revenue line, and caregivers often cannot stay at the hospital |
+| 1.29 | Dispatcher username ignores capital letters, and the phone no longer auto-capitalises it (the password stays exact) (AC24) | Founder iPhone test: the username box became "Peng-admin", so the login failed and locked for 15 minutes |
 | 1.28 | Staff can log in with an emailed 15-minute link when they forget the password (AC39) | Founder review: if the only admin is on leave abroad, nobody else could reset the shared password |
 | 1.27 | Spot search made sturdier: backup service (Photon), 10 s wait, shorter retries | Founder phone test: "Nuvali, Canlubang, Calamba" showed "we couldn't find that spot", though the map has it (the phone's request failed) |
 | 1.26 | The correction box asks for a street or nearby landmark (no house number) and finds it on OpenStreetMap to measure the distance (AC38); data minimisation kept: still no house numbers | Founder phone test: barangay and city are too wide to locate the pick-up |

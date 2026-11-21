@@ -25,7 +25,8 @@ export function safeEqual(a: string, b: string): boolean {
 
 export function checkCredentials(user: string, password: string, c: Creds = env()): boolean {
   if (!isAdminConfigured(c)) return false;
-  const okUser = safeEqual(user.trim(), c.user!);
+  // Usernames ignore capital letters (phones capitalise the first letter); the password does not
+  const okUser = safeEqual(user.trim().toLowerCase(), c.user!.trim().toLowerCase());
   const okPass = safeEqual(password, c.password!);
   return okUser && okPass;
 }

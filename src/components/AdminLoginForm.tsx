@@ -41,6 +41,9 @@ export default function AdminLoginForm() {
           id="admin-user"
           className="input"
           autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required

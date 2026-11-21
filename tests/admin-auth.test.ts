@@ -18,6 +18,10 @@ describe("dispatcher board is admin-only (AC24)", () => {
   it("checks the username and password, and fails closed when not set up", () => {
     expect(checkCredentials("peng-admin", "s3cret-pass-123", creds)).toBe(true);
     expect(checkCredentials(" peng-admin ", "s3cret-pass-123", creds)).toBe(true);
+    // iPhone capitalises the first letter of the username box: still the same user; the password stays exact
+    expect(checkCredentials("Peng-admin", "s3cret-pass-123", creds)).toBe(true);
+    expect(checkCredentials("PENG-ADMIN", "s3cret-pass-123", creds)).toBe(true);
+    expect(checkCredentials("peng-admin", "S3cret-pass-123", creds)).toBe(false);
     expect(checkCredentials("peng-admin", "wrong", creds)).toBe(false);
     expect(checkCredentials("someone", "s3cret-pass-123", creds)).toBe(false);
     expect(checkCredentials("peng-admin", "", { user: "peng-admin", password: "" })).toBe(false);
